@@ -197,6 +197,31 @@
             android:text="📁  Chon file phu de (.srt)"
             android:textSize="14sp" />
 
+        <!-- Tim sub online -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btnSubSearch"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="🔍  Tim sub online"
+                android:textSize="13sp" />
+
+            <Button
+                android:id="@+id/btnSubSettings"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:text="🔑  Key sub"
+                android:textSize="13sp" />
+        </LinearLayout>
+
         <!-- Giong doc -->
         <TextView
             android:layout_width="wrap_content"

@@ -19,6 +19,11 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
+import android.widget.ArrayAdapter;
+import android.widget.CheckBox;
+import android.widget.LinearLayout;
+import android.widget.ScrollView;
+
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -57,6 +62,8 @@ public class MainActivity extends AppCompatActivity {
     private Button btnNextCue;
     private Button btnSetTotal;
     private Button btnJumpRemain;
+    private Button btnSubSearch;
+    private Button btnSubSettings;
     private Button btnVoiceGoogle;
     private Button btnVoiceHoaiMy;
     private Button btnClearCache;
@@ -96,6 +103,8 @@ public class MainActivity extends AppCompatActivity {
         btnNextCue = findViewById(R.id.btnNextCue);
         btnSetTotal = findViewById(R.id.btnSetTotal);
         btnJumpRemain = findViewById(R.id.btnJumpRemain);
+        btnSubSearch = findViewById(R.id.btnSubSearch);
+        btnSubSettings = findViewById(R.id.btnSubSettings);
         btnVoiceGoogle = findViewById(R.id.btnVoiceGoogle);
         btnVoiceHoaiMy = findViewById(R.id.btnVoiceHoaiMy);
         btnClearCache = findViewById(R.id.btnClearCache);
@@ -126,6 +135,8 @@ public class MainActivity extends AppCompatActivity {
         btnNextCue.setOnClickListener(v -> jumpCueUi(1));
         btnSetTotal.setOnClickListener(v -> saveTotalUi());
         btnJumpRemain.setOnClickListener(v -> jumpRemainDialog());
+        btnSubSearch.setOnClickListener(v -> openSubSearch());
+        btnSubSettings.setOnClickListener(v -> openSubSettings());
         btnVoiceGoogle.setOnClickListener(v -> setVoice(
                 TtsPlaybackService.VOICE_GOOGLE));
         btnVoiceHoaiMy.setOnClickListener(v -> setVoice(
@@ -278,6 +289,203 @@ public class MainActivity extends AppCompatActivity {
         } catch (Exception e) {
             toast("Khong doc duoc SRT: " + e.getMessage());
         }
+    }
+
+    /** Dung chung cho nap .srt tay va sub tai tu online. */
+    private void useLoadedCues(List<SubtitleCue> parsed, String label) {
+        subs = parsed;
+        duration = 0;
+        for (SubtitleCue c : subs) duration = Math.max(duration, c.end);
+        position = 0;
+        ensureService();
+        TtsPlaybackService.setSharedSubtitles(subs);
+        tvStatus.setText(label);
+        toast(label + ". Bam Play roi sang Netflix.");
+        refreshCacheBtn();
+        syncUi();
+    }
+
+    // ---------- tim + tai sub online (SubDL / OpenSubtitles / SubSource) ----------
+
+    private LinearLayout dialogRow(String labelText, android.view.View v) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.VERTICAL);
+        row.setPadding(0, 6, 0, 6);
+        TextView lb = new TextView(this);
+        lb.setText(labelText);
+        lb.setTextColor(0xFF8B949E);
+        lb.setTextSize(12);
+        row.addView(lb);
+        row.addView(v);
+        return row;
+    }
+
+    private android.widget.EditText dialogEdit(String hint, String pre) {
+        android.widget.EditText et = new android.widget.EditText(this);
+        et.setHint(hint);
+        et.setText(pre == null ? "" : pre);
+        et.setSingleLine(true);
+        return et;
+    }
+
+    private void openSubSearch() {
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(8, 0, 8, 0);
+        final android.widget.EditText etQ = dialogEdit("Ten phim (vd: Inside Out 2)", "");
+        root.addView(dialogRow("Ten phim", etQ));
+        final CheckBox cbTv = new CheckBox(this);
+        cbTv.setText("Phim bo (can nhap tap)");
+        root.addView(cbTv);
+        LinearLayout seRow = new LinearLayout(this);
+        seRow.setOrientation(LinearLayout.HORIZONTAL);
+        final android.widget.EditText etS = dialogEdit("Season", "1");
+        final android.widget.EditText etE = dialogEdit("Tap", "1");
+        etS.setLayoutParams(new LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        etE.setLayoutParams(new LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        seRow.addView(etS);
+        seRow.addView(etE);
+        root.addView(dialogRow("Season / Tap (chi dung cho phim bo)", seRow));
+        final CheckBox cbDl = new CheckBox(this);
+        cbDl.setText("SubDL");
+        cbDl.setChecked(true);
+        final CheckBox cbOs = new CheckBox(this);
+        cbOs.setText("OpenSubtitles");
+        cbOs.setChecked(true);
+        final CheckBox cbSs = new CheckBox(this);
+        cbSs.setText("SubSource");
+        cbSs.setChecked(true);
+        root.addView(cbDl);
+        root.addView(cbOs);
+        root.addView(cbSs);
+        ScrollView sv = new ScrollView(this);
+        sv.addView(root);
+        new AlertDialog.Builder(this)
+                .setTitle("Tim sub online (uu tien sub Viet)")
+                .setView(sv)
+                .setPositiveButton("Tim", (d, w) -> {
+                    String q = etQ.getText().toString().trim();
+                    if (q.isEmpty()) {
+                        toast("Go ten phim truoc.");
+                        return;
+                    }
+                    int s = 1, e = 1;
+                    try {
+                        s = Math.max(1, Integer.parseInt(
+                                etS.getText().toString().trim()));
+                        e = Math.max(1, Integer.parseInt(
+                                etE.getText().toString().trim()));
+                    } catch (Exception ignored) {}
+                    runSubSearch(q, cbTv.isChecked(), s, e,
+                            cbDl.isChecked(), cbOs.isChecked(), cbSs.isChecked());
+                })
+                .setNegativeButton("Huy", null)
+                .show();
+    }
+
+    private void runSubSearch(final String q, final boolean isTv,
+                              final int season, final int episode,
+                              boolean useDl, boolean useOs, boolean useSs) {
+        tvStatus.setText("Dang tim sub online...");
+        SubSearchManager.searchAll(this, q, isTv ? "tv" : "movie",
+                season, episode, useDl, useOs, useSs,
+                new SubSearchManager.SearchCb() {
+                    @Override public void onOk(List<SubResult> rs, String warn) {
+                        if (!warn.isEmpty()) tvStatus.setText(warn);
+                        showSubResults(rs);
+                    }
+                    @Override public void onError(String msg) {
+                        tvStatus.setText(msg);
+                        toast(msg);
+                    }
+                });
+    }
+
+    private void showSubResults(final List<SubResult> rs) {
+        if (rs.isEmpty()) {
+            toast("Khong tim thay sub.");
+            return;
+        }
+        String[] labels = new String[rs.size()];
+        for (int i = 0; i < rs.size(); i++) labels[i] = rs.get(i).label();
+        ArrayAdapter<String> ad = new ArrayAdapter<>(this,
+                android.R.layout.select_dialog_item, labels);
+        new AlertDialog.Builder(this)
+                .setTitle("Chon sub (" + rs.size() + ") — chon dung ban phim")
+                .setAdapter(ad, (d, which) -> downloadSub(rs.get(which)))
+                .setNegativeButton("Huy", null)
+                .show();
+    }
+
+    private void downloadSub(final SubResult r) {
+        tvStatus.setText("Dang tai sub tu " + r.provider + "...");
+        SubSearchManager.downloadAndParse(this, r,
+                new SubSearchManager.LoadCb() {
+                    @Override public void onOk(List<SubtitleCue> cues, String label) {
+                        useLoadedCues(cues, "Da nap " + label);
+                    }
+                    @Override public void onError(String msg) {
+                        tvStatus.setText(msg);
+                        toast(msg);
+                    }
+                });
+    }
+
+    private void openSubSettings() {
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(8, 0, 8, 0);
+        final android.widget.EditText etDl = dialogEdit("SubDL key (subdl.com/panel/api)",
+                SubSearchManager.str(this, SubSearchManager.K_SUBDL));
+        final android.widget.EditText etSs = dialogEdit("SubSource key (trang profile)",
+                SubSearchManager.str(this, SubSearchManager.K_SUBSOURCE));
+        final android.widget.EditText etOs = dialogEdit("OpenSubtitles key",
+                SubSearchManager.str(this, SubSearchManager.K_OS));
+        final android.widget.EditText etUser = dialogEdit("OpenSubtitles user (de tai)",
+                SubSearchManager.str(this, SubSearchManager.K_OS_USER));
+        final android.widget.EditText etPass = dialogEdit("OpenSubtitles pass (de tai)",
+                SubSearchManager.str(this, SubSearchManager.K_OS_PASS));
+        etPass.setInputType(android.text.InputType.TYPE_CLASS_TEXT
+                | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        root.addView(dialogRow("SubDL key", etDl));
+        root.addView(dialogRow("SubSource key", etSs));
+        root.addView(dialogRow("OpenSubtitles key", etOs));
+        root.addView(dialogRow("OpenSubtitles user", etUser));
+        root.addView(dialogRow("OpenSubtitles pass", etPass));
+        final CheckBox cbDl = new CheckBox(this);
+        cbDl.setText("Bat SubDL");
+        cbDl.setChecked(SubSearchManager.enabled(
+                this, SubSearchManager.K_EN_SUBDL));
+        final CheckBox cbOs = new CheckBox(this);
+        cbOs.setText("Bat OpenSubtitles");
+        cbOs.setChecked(SubSearchManager.enabled(
+                this, SubSearchManager.K_EN_OS));
+        final CheckBox cbSs = new CheckBox(this);
+        cbSs.setText("Bat SubSource");
+        cbSs.setChecked(SubSearchManager.enabled(
+                this, SubSearchManager.K_EN_SUBSOURCE));
+        root.addView(cbDl);
+        root.addView(cbOs);
+        root.addView(cbSs);
+        ScrollView sv = new ScrollView(this);
+        sv.addView(root);
+        new AlertDialog.Builder(this)
+                .setTitle("Key sub online (luu tren may, khong gui di dau)")
+                .setView(sv)
+                .setPositiveButton("Luu", (d, w) -> {
+                    SubSearchManager.saveKeys(this,
+                            etDl.getText().toString(),
+                            etSs.getText().toString(),
+                            etOs.getText().toString(),
+                            etUser.getText().toString(),
+                            etPass.getText().toString(),
+                            cbDl.isChecked(), cbOs.isChecked(), cbSs.isChecked());
+                    toast("Da luu key sub online.");
+                })
+                .setNegativeButton("Huy", null)
+                .show();
     }
 
     private void setPlaying(boolean p) {

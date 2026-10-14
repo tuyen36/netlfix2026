@@ -18,6 +18,16 @@ Bo WebView + offset. UI hien dai: the cau dang doc + nut Play to.
    tren Netflix (vd `25:30`) → sub nhay toi dung cho, tinh chinh
    them bang `-1s/+1s`.
 
+## Tim sub online (SubDL / OpenSubtitles / SubSource)
+
+1. Bam **Key sub** → nhap key cac nguon (luu tren may, khong gui di dau):
+   SubDL key (`subdl.com/panel/api`), SubSource key (trang profile),
+   OpenSubtitles key + tai khoan (user/pass de tai). Tick bat/tat nguon.
+2. Bam **Tim sub online** → go ten phim, chon Phim le/bo (+season/tap),
+   tick nguon → **Tim**.
+3. List ket qua uu tien **sub Viet** kem ten ban release → chon **dung
+   ban** khop phim Netflix dang xem → app tu tai, bung zip, nap sub.
+
 ## Giong doc
 
 - **Google (offline)**: khong can mang.
