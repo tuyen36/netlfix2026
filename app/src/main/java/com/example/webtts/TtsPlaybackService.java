@@ -628,10 +628,20 @@ public class TtsPlaybackService extends Service
         }
         r.position = sharedSubs.get(target).start;
         if (r.position < 0) r.position = 0;
+        // Doi ca chu hien thi (khong thi timer 500ms ghi de ve cau cu).
+        r.lastCueText = sharedSubs.get(target).text;
+        if (r.floatCue != null) {
+            r.handler.post(() -> {
+                try {
+                    if (r.floatCue != null) r.floatCue.setText(r.lastCueText);
+                } catch (Exception ignored) {}
+            });
+        }
         if (r.playing) r.syncClock();
         if (r.speaker != null) r.speaker.resetIndex();
         if (r.edge != null) r.edge.stopPlayer();
-        r.driveEngines();
+        // Pause: chi doi moc gio + chu, khong phat tieng.
+        if (r.playing) r.driveEngines();
         r.refreshFloatTime();
         r.updateNotif();
     }
