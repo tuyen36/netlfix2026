@@ -104,8 +104,15 @@ public class OpenSubtitlesProvider implements SubProvider {
             if (!fn.isEmpty() && rel.isEmpty()) rel = fn;
             int dl = a.optInt("download_count", -1);
             if (dl >= 0) size = dl + " tai";
+            // Anh bia phim nam trong related_links (kem san, khong ton request).
+            String poster = "";
+            JSONArray rl = a.optJSONArray("related_links");
+            if (rl != null && rl.length() > 0) {
+                JSONObject r0 = rl.optJSONObject(0);
+                if (r0 != null) poster = r0.optString("img_url", "");
+            }
             out.add(new SubResult(name(), query, lang, rel, size,
-                    String.valueOf(fileId)));
+                    String.valueOf(fileId), poster));
             if (out.size() >= 30) break;
         }
         return out;

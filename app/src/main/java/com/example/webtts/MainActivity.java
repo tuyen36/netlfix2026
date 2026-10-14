@@ -19,7 +19,6 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
-import android.widget.ArrayAdapter;
 import android.widget.CheckBox;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -408,10 +407,7 @@ public class MainActivity extends AppCompatActivity {
             toast("Khong tim thay sub.");
             return;
         }
-        String[] labels = new String[rs.size()];
-        for (int i = 0; i < rs.size(); i++) labels[i] = rs.get(i).label();
-        ArrayAdapter<String> ad = new ArrayAdapter<>(this,
-                android.R.layout.select_dialog_item, labels);
+        SubResultAdapter ad = new SubResultAdapter(this, rs);
         new AlertDialog.Builder(this)
                 .setTitle("Chon sub (" + rs.size() + ") — chon dung ban phim")
                 .setAdapter(ad, (d, which) -> downloadSub(rs.get(which)))

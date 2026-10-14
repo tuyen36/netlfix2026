@@ -11,15 +11,24 @@ public class SubResult {
     public final String release;
     public final String sizeText;
     public final String ref;
+    /** Link anh bia phim (co the rong, vd SubDL khong co). */
+    public final String posterUrl;
 
     public SubResult(String provider, String film, String language,
                      String release, String sizeText, String ref) {
+        this(provider, film, language, release, sizeText, ref, "");
+    }
+
+    public SubResult(String provider, String film, String language,
+                     String release, String sizeText, String ref,
+                     String posterUrl) {
         this.provider = provider == null ? "" : provider;
         this.film = film == null ? "" : film;
         this.language = language == null ? "" : language;
         this.release = release == null ? "" : release;
         this.sizeText = sizeText == null ? "" : sizeText;
         this.ref = ref == null ? "" : ref;
+        this.posterUrl = posterUrl == null ? "" : posterUrl;
     }
 
     /** Dong hien trong list chon (uu tien doc release de chon dung ban). */

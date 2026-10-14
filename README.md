@@ -27,6 +27,7 @@ Bo WebView + offset. UI hien dai: the cau dang doc + nut Play to.
    tick nguon → **Tim**.
 3. List ket qua uu tien **sub Viet** kem ten ban release → chon **dung
    ban** khop phim Netflix dang xem → app tu tai, bung zip, nap sub.
+   Ket qua SubSource/OpenSubtitles co **anh bia phim**, SubDL hien chu.
 
 ## Giong doc
 
