@@ -18,6 +18,7 @@ import android.speech.tts.TextToSpeech;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.LinearLayout;
@@ -792,21 +793,44 @@ public class TtsPlaybackService extends Service
         floatDot.setPadding(24, 24, 24, 24);
         floatDot.setOnClickListener(v -> togglePanel());
         floatDot.setOnTouchListener(new View.OnTouchListener() {
-            float dx, dy;
+            float downRawX, downRawY, dx, dy;
+            boolean dragged;
+            final int slop = ViewConfiguration.get(ctx).getScaledTouchSlop();
             @Override public boolean onTouch(View v, MotionEvent e) {
                 if (floatParams == null || wm == null) return false;
                 switch (e.getAction()) {
                     case MotionEvent.ACTION_DOWN:
+                        downRawX = e.getRawX();
+                        downRawY = e.getRawY();
                         dx = floatParams.x - e.getRawX();
                         dy = floatParams.y - e.getRawY();
+                        dragged = false;
                         return false;
                     case MotionEvent.ACTION_MOVE:
+                        // Chi tinh la keo khi di qua nguong cua may.
+                        // Cham nhe (trong nguong) thi de yen cho Button
+                        // xu ly nhu tap binh thuong.
+                        if (!dragged
+                                && (Math.abs(e.getRawX() - downRawX) > slop
+                                || Math.abs(e.getRawY() - downRawY) > slop)) {
+                            dragged = true;
+                        }
+                        if (!dragged) return false;
                         floatParams.x = (int) (e.getRawX() + dx);
                         floatParams.y = (int) (e.getRawY() + dy);
                         try {
                             wm.updateViewLayout(floatRoot, floatParams);
                         } catch (Exception ignored) {}
                         return true;
+                    case MotionEvent.ACTION_UP:
+                    case MotionEvent.ACTION_CANCEL:
+                        // Vua keo xong: nuot UP de click khong kich hoat
+                        // (khong tu bung panel). Tap nhe: tha cho click.
+                        if (dragged) {
+                            dragged = false;
+                            return true;
+                        }
+                        return false;
                 }
                 return false;
             }
