@@ -384,18 +384,16 @@ public class MainActivity extends AppCompatActivity {
     private static String fmtMmSs(double sec) {
         if (sec < 0) sec = 0;
         int s = (int) sec;
-        return String.format(Locale.US, "%02d:%02d", s / 60, s % 60);
+        return String.format(Locale.US, "%02d:%02d:%02d",
+                s / 3600, (s % 3600) / 60, s % 60);
     }
 
-    /** "1:32:00" / "92:00" de hien tong thoi luong phim da luu. */
+    /** "01:32:00" de hien tong thoi luong phim da luu. */
     private static String fmtHMS(double sec) {
         if (sec <= 0) return "";
         int s = (int) sec;
-        if (s >= 3600) {
-            return String.format(Locale.US, "%d:%02d:%02d",
-                    s / 3600, (s % 3600) / 60, s % 60);
-        }
-        return String.format(Locale.US, "%d:%02d", s / 60, s % 60);
+        return String.format(Locale.US, "%02d:%02d:%02d",
+                s / 3600, (s % 3600) / 60, s % 60);
     }
 
     /**
