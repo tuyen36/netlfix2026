@@ -113,6 +113,11 @@ public class TtsPlaybackService extends Service
     private boolean playing = false;
     private double position = 0;
     private double duration = 0;
+    /**
+     * Tong thoi luong phim that (giay, do user nhap theo Netflix).
+     * 0 = chua nhap -> dung duration (cuoi sub) lam moc.
+     */
+    private double totalLen = 0;
     /** Dong ho that (thay position += 0.25): moc he thong khi Play. */
     private long playStartElapsed = 0;
     private double playBase = 0;
@@ -176,6 +181,8 @@ public class TtsPlaybackService extends Service
     private LinearLayout floatPanel;
     private TextView floatCue;
     private TextView floatTime;
+    /** Gio con lai dem nguoc nhu Netflix. */
+    private TextView floatRemain;
     private SeekBar floatSeek;
     private Button floatPlayPause;
     private Button floatVoiceBtn;
@@ -219,6 +226,7 @@ public class TtsPlaybackService extends Service
         ttsVol = sp.getInt("ttsVol", 100);
         splitAudio = sp.getBoolean("splitAudio", true);
         voice = sp.getInt("voice", VOICE_GOOGLE);
+        totalLen = sp.getFloat("totalLen", 0f);
     }
 
     @Override
@@ -605,6 +613,60 @@ public class TtsPlaybackService extends Service
     }
 
     /**
+     * Che do DEM NGUOC theo Netflix (Netflix chi bao gio con lai).
+     * User nhap tong thoi luong phim 1 lan -> app hien gio con lai
+     * giong het Netflix de so truc tiep, khoi tu tru.
+     */
+    public static void setTotalLen(double v) {
+        if (running != null) {
+            running.totalLen = Math.max(0, v);
+            running.getSharedPreferences("webtts", MODE_PRIVATE)
+                    .edit().putFloat("totalLen", (float) running.totalLen).apply();
+            running.refreshFloatTime();
+            running.updateNotif();
+        }
+    }
+
+    public static double getTotalLen() {
+        return running != null ? running.totalLen : 0;
+    }
+
+    /** Moc de so voi Netflix: totalLen neu da nhap, khong thi duration. */
+    public static double syncBase() {
+        if (running == null) return 0;
+        return running.totalLen > 0 ? running.totalLen : running.duration;
+    }
+
+    /** So giay con lai (dem nguoc nhu Netflix). */
+    public static double remainingNow() {
+        if (running == null) return 0;
+        double rem = syncBase() - getPosition();
+        return rem < 0 ? 0 : rem;
+    }
+
+    /** "-mm:ss" de so truc tiep voi dong ho Netflix. */
+    public static String remainingText() {
+        if (running == null || syncBase() <= 0) return "--:--";
+        return "-" + fmtTime(remainingNow());
+    }
+
+    /**
+     * Nhap con so gio con lai DANG THAY tren Netflix -> nhay sub
+     * toi dung cho do. Xong tinh chinh bang nut -1s/+1s.
+     */
+    public static void jumpToRemaining(double remSec) {
+        if (running == null || sharedSubs.isEmpty()) return;
+        double base = syncBase();
+        if (base <= 0) return;
+        double pos = base - Math.max(0, remSec);
+        if (pos < 0) pos = 0;
+        if (running.duration > 0 && pos > running.duration) {
+            pos = running.duration;
+        }
+        setPosition(pos);
+    }
+
+    /**
      * Nhay toi dau cau phu de truoc/sau (dir = -1/+1).
      * Nhan lui khi dang doc doan sau cua 1 cau (>2s): ve dau cau do
      * (giong nut lui cua trinh phat nhac). Ngoai vung cue: nhay toi
@@ -769,6 +831,13 @@ public class TtsPlaybackService extends Service
         floatTime.setTextSize(13);
         floatPanel.addView(floatTime);
 
+        // Gio con lai dem nguoc y het Netflix de so truc tiep.
+        floatRemain = new TextView(ctx);
+        floatRemain.setText(remainingText());
+        floatRemain.setTextColor(0xFFFFB74D);
+        floatRemain.setTextSize(12);
+        floatPanel.addView(floatRemain);
+
         // Thanh timeline tren nut noi: keo de nhay gio ngay ca khi
         // dang xem Netflix, khong can mo lai app.
         floatSeek = new SeekBar(ctx);
@@ -925,6 +994,7 @@ public class TtsPlaybackService extends Service
         if (!floatShown || floatTime == null) return;
         try {
             floatTime.setText(timeText());
+            if (floatRemain != null) floatRemain.setText(remainingText());
             // Khong danh thanh keo khi user dang keo (isPressed).
             if (floatSeek != null && !floatSeek.isPressed() && duration > 0) {
                 floatSeek.setProgress(

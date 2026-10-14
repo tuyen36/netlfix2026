@@ -89,6 +89,16 @@
                 android:text="00:00 / 00:00"
                 android:textColor="#58A6FF"
                 android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/tvRemain"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="Con lai: --:--"
+                android:textColor="#FFB74D"
+                android:textSize="20sp"
+                android:textStyle="bold" />
         </LinearLayout>
 
         <SeekBar
@@ -122,6 +132,50 @@
                 android:text="Cau sau  ⏭"
                 android:textSize="13sp" />
         </LinearLayout>
+
+        <!-- Can gio dem nguoc voi Netflix (Netflix chi bao gio con lai) -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:text="Can gio voi Netflix"
+            android:textColor="#8B949E"
+            android:textSize="12sp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <EditText
+                android:id="@+id/etTotalLen"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="Tong thoi luong phim (vd 1:32:00)"
+                android:inputType="text"
+                android:textColor="#FFFFFF"
+                android:textColorHint="#6E7681"
+                android:textSize="14sp" />
+
+            <Button
+                android:id="@+id/btnSetTotal"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="Luu"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/btnJumpRemain"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="⏱  Nhap gio con lai tren Netflix"
+            android:textSize="14sp" />
 
         <!-- Nut Play/Pause to -->
         <Button

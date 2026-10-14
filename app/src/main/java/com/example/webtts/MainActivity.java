@@ -15,6 +15,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
@@ -24,6 +25,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Netflix TTS — ban rieng chay song song app Netflix goc.
@@ -42,6 +45,9 @@ public class MainActivity extends AppCompatActivity {
     private TextView tvStatus;
     private TextView tvCue;
     private TextView tvTime;
+    /** Gio con lai dem nguoc nhu Netflix. */
+    private TextView tvRemain;
+    private android.widget.EditText etTotalLen;
     private TextView tvRate;
     private TextView tvTtsVol;
     private TextView tvVoiceBadge;
@@ -49,6 +55,8 @@ public class MainActivity extends AppCompatActivity {
     private Button btnFloat;
     private Button btnPrevCue;
     private Button btnNextCue;
+    private Button btnSetTotal;
+    private Button btnJumpRemain;
     private Button btnVoiceGoogle;
     private Button btnVoiceHoaiMy;
     private Button btnClearCache;
@@ -62,6 +70,8 @@ public class MainActivity extends AppCompatActivity {
     private boolean playing = false;
     private double position = 0;
     private double duration = 0;
+    /** Tong thoi luong phim (giay) do user nhap theo Netflix. */
+    private double totalLen = 0;
     private float rate = 1.0f;
     private int ttsVol = 100;
 
@@ -75,6 +85,8 @@ public class MainActivity extends AppCompatActivity {
         tvStatus = findViewById(R.id.tvStatus);
         tvCue = findViewById(R.id.tvCue);
         tvTime = findViewById(R.id.tvTime);
+        tvRemain = findViewById(R.id.tvRemain);
+        etTotalLen = findViewById(R.id.etTotalLen);
         tvRate = findViewById(R.id.tvRate);
         tvTtsVol = findViewById(R.id.tvTtsVol);
         tvVoiceBadge = findViewById(R.id.tvVoiceBadge);
@@ -82,6 +94,8 @@ public class MainActivity extends AppCompatActivity {
         btnFloat = findViewById(R.id.btnFloat);
         btnPrevCue = findViewById(R.id.btnPrevCue);
         btnNextCue = findViewById(R.id.btnNextCue);
+        btnSetTotal = findViewById(R.id.btnSetTotal);
+        btnJumpRemain = findViewById(R.id.btnJumpRemain);
         btnVoiceGoogle = findViewById(R.id.btnVoiceGoogle);
         btnVoiceHoaiMy = findViewById(R.id.btnVoiceHoaiMy);
         btnClearCache = findViewById(R.id.btnClearCache);
@@ -94,6 +108,8 @@ public class MainActivity extends AppCompatActivity {
         rate = sp.getFloat("rate", 1.0f);
         ttsVol = sp.getInt("ttsVol", 100);
         voice = sp.getInt("voice", TtsPlaybackService.VOICE_GOOGLE);
+        totalLen = sp.getFloat("totalLen", 0);
+        etTotalLen.setText(totalLen > 0 ? fmtHMS(totalLen) : "");
 
         refreshVoiceUi();
         refreshCacheBtn();
@@ -108,6 +124,8 @@ public class MainActivity extends AppCompatActivity {
         btnFloat.setOnClickListener(v -> ensureFloat());
         btnPrevCue.setOnClickListener(v -> jumpCueUi(-1));
         btnNextCue.setOnClickListener(v -> jumpCueUi(1));
+        btnSetTotal.setOnClickListener(v -> saveTotalUi());
+        btnJumpRemain.setOnClickListener(v -> jumpRemainDialog());
         btnVoiceGoogle.setOnClickListener(v -> setVoice(
                 TtsPlaybackService.VOICE_GOOGLE));
         btnVoiceHoaiMy.setOnClickListener(v -> setVoice(
@@ -173,6 +191,7 @@ public class MainActivity extends AppCompatActivity {
                         tvCue.setText(cue);
                     }
                     tvTime.setText(TtsPlaybackService.timeText());
+                    tvRemain.setText(TtsPlaybackService.remainingText());
                     double sp2 = TtsPlaybackService.getPosition();
                     if (duration > 0 && Math.abs(sp2 - position) > 0.6) {
                         position = sp2;
@@ -368,11 +387,118 @@ public class MainActivity extends AppCompatActivity {
         return String.format(Locale.US, "%02d:%02d", s / 60, s % 60);
     }
 
+    /** "1:32:00" / "92:00" de hien tong thoi luong phim da luu. */
+    private static String fmtHMS(double sec) {
+        if (sec <= 0) return "";
+        int s = (int) sec;
+        if (s >= 3600) {
+            return String.format(Locale.US, "%d:%02d:%02d",
+                    s / 3600, (s % 3600) / 60, s % 60);
+        }
+        return String.format(Locale.US, "%d:%02d", s / 60, s % 60);
+    }
+
+    /**
+     * Parse tong thoi luong phim: "1:32:00", "92:00", "1h32m", "92m".
+     * So tran khong don vi hieu la PHUT (Netflix bao "1h 32m" -> go 92).
+     * Tra ve giay, -1 neu sai.
+     */
+    private static double parseLen(String s) {
+        if (s == null) return -1;
+        s = s.trim().toLowerCase(Locale.US).replace(" ", "");
+        if (s.isEmpty()) return -1;
+        try {
+            if (s.contains("h") || (s.contains("m") && !s.contains(":"))) {
+                double total = 0;
+                Matcher mh = Pattern.compile("(\\d+(?:\\.\\d+)?)h").matcher(s);
+                if (mh.find()) total += Double.parseDouble(mh.group(1)) * 3600;
+                Matcher mm = Pattern.compile("(\\d+(?:\\.\\d+)?)m").matcher(s);
+                if (mm.find()) total += Double.parseDouble(mm.group(1)) * 60;
+                Matcher ms = Pattern.compile("(\\d+(?:\\.\\d+)?)s").matcher(s);
+                if (ms.find()) total += Double.parseDouble(ms.group(1));
+                return total > 0 ? total : -1;
+            }
+            if (s.contains(":")) {
+                double total = 0;
+                for (String p : s.split(":")) total = total * 60 + Double.parseDouble(p);
+                return total;
+            }
+            return Double.parseDouble(s) * 60;
+        } catch (Exception e) {
+            return -1;
+        }
+    }
+
+    /** Parse gio con lai thay tren Netflix: "25:30", "1:05:00", "-25:30". */
+    private static double parseRemain(String s) {
+        if (s == null) return -1;
+        s = s.trim().replace(" ", "");
+        if (s.startsWith("-") || s.startsWith("+")) s = s.substring(1);
+        if (s.isEmpty()) return -1;
+        try {
+            if (!s.contains(":")) return Double.parseDouble(s);
+            double total = 0;
+            for (String p : s.split(":")) total = total * 60 + Double.parseDouble(p);
+            return total;
+        } catch (Exception e) {
+            return -1;
+        }
+    }
+
+    /** Luu tong thoi luong phim (nhap 1 lan cho moi phim). */
+    private void saveTotalUi() {
+        double v = parseLen(etTotalLen.getText().toString());
+        if (v <= 0) {
+            toast("Sai dinh dang. Vd: 1:32:00 hoac 92m");
+            return;
+        }
+        totalLen = v;
+        getSharedPreferences("webtts", MODE_PRIVATE)
+                .edit().putFloat("totalLen", (float) v).apply();
+        ensureService();
+        TtsPlaybackService.setTotalLen(v);
+        etTotalLen.setText(fmtHMS(v));
+        syncUi();
+        toast("Da luu tong " + fmtHMS(v)
+                + ". Gio so gio CON LAI voi Netflix.");
+    }
+
+    /** Nhap con so dem nguoc tren Netflix -> nhay sub toi dung cho. */
+    private void jumpRemainDialog() {
+        if (subs.isEmpty()) {
+            toast("Chon file .srt truoc.");
+            return;
+        }
+        ensureService();
+        final android.widget.EditText et = new android.widget.EditText(this);
+        et.setHint("vd: 25:30");
+        et.setInputType(android.text.InputType.TYPE_CLASS_TEXT);
+        new AlertDialog.Builder(this)
+                .setTitle("Gio con lai tren Netflix")
+                .setMessage("Nhin dong ho dem nguoc cua Netflix roi go vao, vd 25:30")
+                .setView(et)
+                .setPositiveButton("Nhay", (d, w) -> {
+                    double rem = parseRemain(et.getText().toString());
+                    if (rem < 0) {
+                        toast("Sai dinh dang gio.");
+                        return;
+                    }
+                    TtsPlaybackService.jumpToRemaining(rem);
+                    position = TtsPlaybackService.getPosition();
+                    syncUi();
+                    toast("Da nhay toi " + fmtMmSs(position)
+                            + ". Tinh chinh bang -1s/+1s.");
+                })
+                .setNegativeButton("Huy", null)
+                .show();
+    }
+
     private void syncUi() {
         if (duration > 0 && !seeking) {
             seekPos.setProgress((int) (position / duration * 1000));
         }
         tvTime.setText(TtsPlaybackService.timeText());
+        tvRemain.setText(TtsPlaybackService.remainingText());
         int idx = SubtitleParser.findIndex(subs, position);
         if (idx >= 0 && idx < subs.size()) {
             tvCue.setText(subs.get(idx).text);
@@ -399,6 +525,11 @@ public class MainActivity extends AppCompatActivity {
         playing = TtsPlaybackService.isPlayingNow();
         voice = TtsPlaybackService.getVoice();
         position = TtsPlaybackService.getPosition();
+        totalLen = getSharedPreferences("webtts", MODE_PRIVATE)
+                .getFloat("totalLen", 0);
+        if (etTotalLen != null) {
+            etTotalLen.setText(totalLen > 0 ? fmtHMS(totalLen) : "");
+        }
         refreshPlayBtn();
         refreshVoiceUi();
         refreshCacheBtn();
