@@ -37,11 +37,15 @@ public class SubResultAdapter extends ArrayAdapter<SubResult> {
             row.setPadding((int) (12 * den), (int) (8 * den),
                     (int) (12 * den), (int) (8 * den));
             ImageView iv = new ImageView(ctx);
+            // Anh chiem 2/3 ngang dong (weight 2 vs chu weight 1),
+            // giu ti le poster, tu gian cao.
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                    (int) (54 * den), (int) (81 * den));
+                    0, LinearLayout.LayoutParams.WRAP_CONTENT, 2f);
             lp.setMarginEnd((int) (10 * den));
             iv.setLayoutParams(lp);
-            iv.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            iv.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            iv.setAdjustViewBounds(true);
+            iv.setMinimumHeight((int) (120 * den));
             iv.setBackgroundColor(0xFF1C2128);
             row.addView(iv);
             TextView tv = new TextView(ctx);

@@ -13,8 +13,8 @@ android {
         // V1.1: ha minSdk 28 (Android 9.0) — code da guard API 23/26.
         minSdk 28
         targetSdk 34
-        versionCode 10
-        versionName "1.5"
+        versionCode 11
+        versionName "1.5.1"
     }
 
     buildTypes {
