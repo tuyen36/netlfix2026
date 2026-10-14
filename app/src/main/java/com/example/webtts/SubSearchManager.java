@@ -167,7 +167,7 @@ public final class SubSearchManager {
 
     private static SubProvider providerFor(Context ctx, String name) throws Exception {
         if ("SubDL".equals(name)) return new SubDlProvider(str(ctx, K_SUBDL));
-        if ("OpenSubtitles") return new OpenSubtitlesProvider(str(ctx, K_OS),
+        if ("OpenSubtitles".equals(name)) return new OpenSubtitlesProvider(str(ctx, K_OS),
                 str(ctx, K_OS_USER), str(ctx, K_OS_PASS),
                 OpenSubtitlesProvider.androidPrefs(ctx));
         if ("SubSource".equals(name)) {
