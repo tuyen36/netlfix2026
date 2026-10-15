@@ -54,6 +54,9 @@ Nut noi gon: cau + gio + Play/⏮/⏭ + nut ⋯ mo them.
 
 - Moi phim (theo ten file sub) tu nho **tong gio + vi tri dung**: nap lai
   sub cu → app hoi **xem tiep tu mm:ss** (tong gio khoi phai nhap lai).
+- Nut **Luu sub vao may**: ghi sub dang doc thanh `.srt` trong bo nho
+  rieng (khong can quyen). Lan sau mo app tu nap + hoi xem tiep.
+  Xem het phim tu xoa file + ho so cho khoi day may.
 - Nut **Hen gio tat**: Tat / 15 / 30 / 60 / 90 phut, het gio tu dung doc
   (pause thi dem tiep khi Play, nap sub moi thi huy hen).
 - Cuoc goi den: he thong tu tat tieng media — nghe xong bam Play tiep

@@ -25,6 +25,8 @@ import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.ScrollView;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -60,6 +62,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView tvTtsVol;
     private TextView tvVoiceBadge;
     private Button btnPlayPause;
+    private Button btnSaveSub;
     private Button btnFloat;
     private Button btnPrevCue;
     private Button btnNextCue;
@@ -119,6 +122,7 @@ public class MainActivity extends AppCompatActivity {
         tvTtsVol = findViewById(R.id.tvTtsVol);
         tvVoiceBadge = findViewById(R.id.tvVoiceBadge);
         btnPlayPause = findViewById(R.id.btnPlayPause);
+        btnSaveSub = findViewById(R.id.btnSaveSub);
         btnFloat = findViewById(R.id.btnFloat);
         btnPrevCue = findViewById(R.id.btnPrevCue);
         btnNextCue = findViewById(R.id.btnNextCue);
@@ -168,8 +172,36 @@ public class MainActivity extends AppCompatActivity {
         refreshPlayBtn();
         showPane(sp.getInt("tab", 0));
 
+        // Tu nap sub da luu cua phim gan nhat (neu co) + hoi xem tiep.
+        // Chi nap khi chua co sub (khong de len sub user vua chon).
+        try {
+            String lastId = sp.getString("curfilm_id", "");
+            if (subs.isEmpty() && !lastId.isEmpty()) {
+                String savedPath = sp.getString("ffile_" + lastId, "");
+                if (!savedPath.isEmpty()) {
+                    File sf = new File(savedPath);
+                    if (sf.isFile()) {
+                        String body = readAllText(sf);
+                        if (!body.isEmpty() && body.charAt(0) == 0xFEFF) {
+                            body = body.substring(1);
+                        }
+                        List<SubtitleCue> auto =
+                                SubtitleParser.parseSrt(body);
+                        if (!auto.isEmpty()) {
+                            String lname = sp.getString(
+                                    "curfilm_name", "phim");
+                            useLoadedCues(auto,
+                                    "Da nap " + lname + " (da luu).",
+                                    lastId, lname, "");
+                        }
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+
         findViewById(R.id.btnPickSrt).setOnClickListener(v -> pickSrt());
         btnPlayPause.setOnClickListener(v -> setPlaying(!playing));
+        btnSaveSub.setOnClickListener(v -> saveSubToPhone());
         btnFloat.setOnClickListener(v -> ensureFloat());
         btnPrevCue.setOnClickListener(v -> jumpCueUi(-1));
         btnNextCue.setOnClickListener(v -> jumpCueUi(1));
@@ -933,6 +965,78 @@ public class MainActivity extends AppCompatActivity {
         ensureService();
         if (p) TtsPlaybackService.cmd(this, TtsPlaybackService.ACTION_PLAY);
         else TtsPlaybackService.cmd(this, TtsPlaybackService.ACTION_PAUSE);
+    }
+
+    /** "hh:mm:ss,mmm" de ghi file .srt. */
+    private static String fmtSrt(double sec) {
+        if (sec < 0) sec = 0;
+        long ms = Math.round(sec * 1000);
+        return String.format(Locale.US, "%02d:%02d:%02d,%03d",
+                ms / 3600000, (ms % 3600000) / 60000,
+                (ms % 60000) / 1000, ms % 1000);
+    }
+
+    private static String safeFileName(String s) {
+        if (s == null || s.isEmpty()) s = "phim";
+        s = s.replaceAll("[^\\p{L}\\p{Nd} _.-]+", "_").trim();
+        if (s.length() > 60) s = s.substring(0, 60);
+        if (s.isEmpty()) s = "phim";
+        return s;
+    }
+
+    /**
+     * Luu sub dang doc thanh file .srt trong bo nho rieng cua app
+     * (khong can xin quyen) de lan sau tu nap + xem tiep.
+     */
+    private void saveSubToPhone() {
+        if (subs.isEmpty()) {
+            toast("Chua co sub de luu — nap sub truoc.");
+            return;
+        }
+        try {
+            StringBuilder sb = new StringBuilder();
+            int no = 1;
+            for (SubtitleCue c : subs) {
+                sb.append(no++).append('\n');
+                sb.append(fmtSrt(c.start)).append(" --> ")
+                        .append(fmtSrt(c.end)).append('\n');
+                sb.append(c.text).append("\n\n");
+            }
+            File dir = new File(getFilesDir(), "subs");
+            if (!dir.exists()) dir.mkdirs();
+            String base = safeFileName(
+                    filmName == null || filmName.isEmpty() ? "phim" : filmName);
+            File out = new File(dir, base + ".srt");
+            java.io.OutputStream os = new java.io.FileOutputStream(out);
+            os.write(sb.toString().getBytes("UTF-8"));
+            os.close();
+            if (filmId == null || filmId.isEmpty()) {
+                filmId = "tay:" + Integer.toHexString(
+                        subs.get(0).text.hashCode());
+            }
+            getSharedPreferences("webtts", MODE_PRIVATE).edit()
+                    .putString("ffile_" + filmId, out.getAbsolutePath()).apply();
+            toast("Da luu sub (" + subs.size() + " cau). Lan sau mo app tu nap.");
+        } catch (Exception e) {
+            toast("Luu that bai: " + e.getMessage());
+        }
+    }
+
+    private static String readAllText(File f) throws Exception {
+        InputStream in = new FileInputStream(f);
+        try {
+            byte[] buf = new byte[65536];
+            StringBuilder sb = new StringBuilder();
+            int total = 0, n;
+            while ((n = in.read(buf)) > 0) {
+                total += n;
+                if (total > 2 * 1024 * 1024) break;
+                sb.append(new String(buf, 0, n, "UTF-8"));
+            }
+            return sb.toString();
+        } finally {
+            try { in.close(); } catch (Exception ignored) {}
+        }
     }
 
     private void refreshPlayBtn() {

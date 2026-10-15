@@ -157,6 +157,7 @@ public class TtsPlaybackService extends Service
                 if (position >= duration) {
                     position = duration;
                     setPlaying(false);
+                    cleanupFinishedFilm();
                 }
                 // Hen gio tat doc (chi dem khi dang phat).
                 if (playing && sleepAtElapsed > 0
@@ -751,6 +752,25 @@ public class TtsPlaybackService extends Service
             pos = running.duration;
         }
         setPosition(pos);
+    }
+
+    /** Xem het phim: xoa file sub da luu + ho so phim cho khoi day may. */
+    private void cleanupFinishedFilm() {
+        if (filmId.isEmpty() || duration <= 0) return;
+        if (position < duration - 2) return;
+        try {
+            SharedPreferences sp =
+                    getSharedPreferences("webtts", MODE_PRIVATE);
+            String path = sp.getString("ffile_" + filmId, "");
+            if (!path.isEmpty()) {
+                try {
+                    new java.io.File(path).delete();
+                } catch (Exception ignored) {}
+            }
+            sp.edit().remove("fpos_" + filmId).remove("ftotal_" + filmId)
+                    .remove("fname_" + filmId).remove("ffile_" + filmId)
+                    .apply();
+        } catch (Exception ignored) {}
     }
 
     /**

@@ -220,6 +220,15 @@
             android:textSize="17sp"
             android:textStyle="bold" />
 
+        <!-- Luu sub vao may de lan sau tu nap + xem tiep -->
+        <Button
+            android:id="@+id/btnSaveSub"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="💾  Luu sub vao may"
+            android:textSize="14sp" />
+
         </LinearLayout>
 
         <!-- TAB Tim sub: chon file + online + sao luu -->
