@@ -2,6 +2,8 @@ package com.example.webtts;
 
 import android.content.Context;
 import android.media.MediaPlayer;
+import android.os.Handler;
+import android.os.Looper;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -45,6 +47,12 @@ public class EdgeVoiceEngine {
     private final Listener listener;
     private final File cacheDir;
     private final ExecutorService pool = Executors.newFixedThreadPool(3);
+    /** Thread rieng cho prepare/start MediaPlayer (khong block main). */
+    private final ExecutorService playerExec =
+            Executors.newSingleThreadExecutor();
+    /** Token: cau moi nhat thang, cau cu dang prepare tu huy. */
+    private final AtomicInteger playToken = new AtomicInteger(0);
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final Map<Integer, String> readyPath = new ConcurrentHashMap<>();
     private final Map<Integer, Float> rawDur = new ConcurrentHashMap<>();
     private final Map<String, Boolean> queued = new ConcurrentHashMap<>();
@@ -271,15 +279,15 @@ public class EdgeVoiceEngine {
     /**
      * Doc 1 cau theo slot. Port create_speed_audio Python:
      * speed = raw/slot kep 1..2.5.
-     * FIX tre 1 nhip: prepare() DONG BO truoc (mp3 local ~10-50ms) roi
-     * start() ngay, khong doi prepareAsync callback. Nhu vay tai thoi
-     * diem sub nao la keu cau do, khong tre sang cau sau.
+     * prepare() chay tren thread rieng (khong block main thread gay khung),
+     * start() ngay khi xong. Nhan cau lien tiep thi cau moi nhat thang
+     * (token): cau cu dang prepare do se tu huy im lang.
      * Neu mp3 chua tai xong: tra false de ticker giu cau, preload gap.
      */
     public boolean speak(int index, double slotSec, int stream) {
         List<SubtitleCue> s = subs;
         if (index < 0 || index >= s.size()) return false;
-        String path = readyPath.get(index);
+        final String path = readyPath.get(index);
         if (path == null) {
             // Chua tai xong: queue gap + preload (port queue_tts priority=0).
             preloadFrom(index);
@@ -295,32 +303,72 @@ public class EdgeVoiceEngine {
         } else if (baseRate > 1.0f) {
             speed = baseRate;
         }
-        try {
+        final float fSpeed = speed;
+        final int fStream = stream;
+        final float fVol = ttsVol / 100f;
+        playerExec.execute(() -> {
+            MediaPlayer mp = new MediaPlayer();
             synchronized (playerLock) {
                 stopPlayerLocked();
-                player = new MediaPlayer();
-                player.setAudioStreamType(stream);
-                player.setDataSource(path);
-                player.setVolume(ttsVol / 100f, ttsVol / 100f);
-                // prepare dong bo: mp3 local nen nhanh, start ngay.
-                player.prepare();
+                player = mp;
+            }
+            final int tk = playToken.get();
+            try {
+                mp.setAudioStreamType(fStream);
+                mp.setDataSource(path);
+                mp.setVolume(fVol, fVol);
+                mp.prepare();
+                // Trong luc prepare ma co lenh moi/stop -> huy im lang.
+                if (tk != playToken.get()) {
+                    safeRelease(mp);
+                    clearIfSame(mp);
+                    return;
+                }
                 try {
-                    if (android.os.Build.VERSION.SDK_INT >= 23
-                            && Math.abs(speed - 1.0f) > 0.01) {
-                        player.setPlaybackParams(
-                                player.getPlaybackParams().setSpeed(speed));
+                    if (Math.abs(fSpeed - 1.0f) > 0.01) {
+                        mp.setPlaybackParams(
+                                mp.getPlaybackParams().setSpeed(fSpeed));
                     }
                 } catch (Exception ignored) {}
-                player.setOnCompletionListener(mp -> {
-                    if (listener != null) listener.onSpeakDone(index);
+                final MediaPlayer fmp = mp;
+                mp.setOnCompletionListener(done -> {
+                    if (tk == playToken.get() && listener != null) {
+                        listener.onSpeakDone(index);
+                    }
+                    if (fmp != null) {
+                        try { fmp.release(); } catch (Exception ignored) {}
+                        clearIfSame(fmp);
+                    }
                 });
-                player.start();
-                if (listener != null) listener.onSpeakStart(index);
+                mp.start();
+                mainHandler.post(() -> {
+                    if (tk == playToken.get() && listener != null) {
+                        listener.onSpeakStart(index);
+                    }
+                });
+            } catch (Exception e) {
+                safeRelease(mp);
+                clearIfSame(mp);
+                if (tk == playToken.get() && listener != null) {
+                    final String msg = e.getMessage();
+                    mainHandler.post(() -> {
+                        if (listener != null) listener.onError(index, msg);
+                    });
+                }
             }
-            return true;
-        } catch (Exception e) {
-            if (listener != null) listener.onError(index, e.getMessage());
-            return false;
+        });
+        return true;
+    }
+
+    private void safeRelease(MediaPlayer mp) {
+        if (mp == null) return;
+        try { mp.stop(); } catch (Exception ignored) {}
+        try { mp.release(); } catch (Exception ignored) {}
+    }
+
+    private void clearIfSame(MediaPlayer mp) {
+        synchronized (playerLock) {
+            if (player == mp) player = null;
         }
     }
 
@@ -333,6 +381,8 @@ public class EdgeVoiceEngine {
     }
 
     public void stopPlayer() {
+        // Tang token de cau dang prepare do tu huy im lang.
+        playToken.incrementAndGet();
         synchronized (playerLock) {
             stopPlayerLocked();
         }
@@ -343,7 +393,9 @@ public class EdgeVoiceEngine {
 
     public void shutdown() {
         generation.incrementAndGet();
+        playToken.incrementAndGet();
         stopPlayer();
         pool.shutdownNow();
+        playerExec.shutdownNow();
     }
 }

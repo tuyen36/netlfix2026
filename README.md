@@ -34,6 +34,12 @@ Bo WebView + offset. UI hien dai: the cau dang doc + nut Play to.
    ten tieng Anh vao o tim sub. Can key TMDB mien phi
    (`themoviedb.org` → Settings → API), nhap trong **Key sub**.
 
+## Sao luu / khoi phuc
+
+- Nut **Sao luu**: chon cho luu file `subtts-backup.json` (gom toc do,
+  volume, giong, tach loa, tong phim + key sub online). Giu file can than.
+- Nut **Khoi phuc**: chon file backup → app nap lai toan bo, khoi nhap lại.
+
 ## Giong doc
 
 - **Google (offline)**: khong can mang.

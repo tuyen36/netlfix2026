@@ -28,9 +28,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <!-- V1.1: bo foregroundServiceType (API 29+) de chay Android 9 -->
+        <!-- Android 14+ (targetSdk 34) bat buoc khai type, khong thi
+             startForeground vang SecurityException. May cu (<29) tu bo qua. -->
         <service
             android:name=".TtsPlaybackService"
+            android:foregroundServiceType="mediaPlayback"
             android:exported="false" />
     </application>
 

@@ -44,6 +44,8 @@ public class MainActivity extends AppCompatActivity {
     private static final int REQ_SRT = 1001;
     private static final int REQ_NOTIF = 1002;
     private static final int REQ_OVERLAY = 1003;
+    private static final int REQ_BACKUP = 1004;
+    private static final int REQ_RESTORE = 1005;
 
     private List<SubtitleCue> subs = new ArrayList<>();
 
@@ -64,6 +66,8 @@ public class MainActivity extends AppCompatActivity {
     private Button btnJumpRemain;
     private Button btnSubSearch;
     private Button btnSubSettings;
+    private Button btnBackup;
+    private Button btnRestore;
     private Button btnExit;
     private Button btnVoiceGoogle;
     private Button btnVoiceHoaiMy;
@@ -106,6 +110,8 @@ public class MainActivity extends AppCompatActivity {
         btnJumpRemain = findViewById(R.id.btnJumpRemain);
         btnSubSearch = findViewById(R.id.btnSubSearch);
         btnSubSettings = findViewById(R.id.btnSubSettings);
+        btnBackup = findViewById(R.id.btnBackup);
+        btnRestore = findViewById(R.id.btnRestore);
         btnExit = findViewById(R.id.btnExit);
         btnVoiceGoogle = findViewById(R.id.btnVoiceGoogle);
         btnVoiceHoaiMy = findViewById(R.id.btnVoiceHoaiMy);
@@ -139,6 +145,8 @@ public class MainActivity extends AppCompatActivity {
         btnJumpRemain.setOnClickListener(v -> jumpRemainDialog());
         btnSubSearch.setOnClickListener(v -> openSubSearch());
         btnSubSettings.setOnClickListener(v -> openSubSettings());
+        btnBackup.setOnClickListener(v -> startBackup());
+        btnRestore.setOnClickListener(v -> startRestore());
         btnExit.setOnClickListener(v -> exitAppUi());
         btnVoiceGoogle.setOnClickListener(v -> setVoice(
                 TtsPlaybackService.VOICE_GOOGLE));
@@ -257,6 +265,12 @@ public class MainActivity extends AppCompatActivity {
                 TtsPlaybackService.cmd(this, TtsPlaybackService.ACTION_SHOW_FLOAT);
                 toast("Da bat nut noi — sang Netflix van dieu khien duoc.");
             }
+        } else if (requestCode == REQ_BACKUP && resultCode == Activity.RESULT_OK
+                && data != null && data.getData() != null) {
+            writeBackup(data.getData());
+        } else if (requestCode == REQ_RESTORE && resultCode == Activity.RESULT_OK
+                && data != null && data.getData() != null) {
+            readRestore(data.getData());
         }
     }
 
@@ -583,6 +597,158 @@ public class MainActivity extends AppCompatActivity {
                 })
                 .setNegativeButton("Huy", null)
                 .show();
+    }
+
+    // ---------- sao luu / khoi phuc cai dat + key ----------
+
+    /** Cho user chon cho luu file backup JSON. */
+    private void startBackup() {
+        try {
+            Intent i = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+            i.addCategory(Intent.CATEGORY_OPENABLE);
+            i.setType("application/json");
+            i.putExtra(Intent.EXTRA_TITLE, "subtts-backup.json");
+            startActivityForResult(i, REQ_BACKUP);
+        } catch (Exception e) {
+            toast("Khong mo duoc chon cho luu: " + e.getMessage());
+        }
+    }
+
+    private void startRestore() {
+        try {
+            Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            i.addCategory(Intent.CATEGORY_OPENABLE);
+            i.setType("*/*");
+            i.putExtra(Intent.EXTRA_MIME_TYPES,
+                    new String[]{"application/json", "text/plain"});
+            startActivityForResult(i, REQ_RESTORE);
+        } catch (Exception e) {
+            toast("Khong mo duoc chon file: " + e.getMessage());
+        }
+    }
+
+    private void writeBackup(Uri uri) {
+        try {
+            SharedPreferences sp =
+                    getSharedPreferences("webtts", MODE_PRIVATE);
+            org.json.JSONObject o = new org.json.JSONObject();
+            o.put("app", "subtts");
+            o.put("v", 1);
+            o.put("rate", (double) sp.getFloat("rate", 1.0f));
+            o.put("ttsVol", sp.getInt("ttsVol", 100));
+            o.put("voice", sp.getInt("voice", 0));
+            o.put("splitAudio", sp.getBoolean("splitAudio", true));
+            o.put("offset", (double) sp.getFloat("offset", 0f));
+            o.put("totalLen", (double) sp.getFloat("totalLen", 0f));
+            putStr(o, sp, SubSearchManager.K_SUBDL);
+            putStr(o, sp, SubSearchManager.K_SUBSOURCE);
+            putStr(o, sp, SubSearchManager.K_OS);
+            putStr(o, sp, SubSearchManager.K_OS_USER);
+            putStr(o, sp, SubSearchManager.K_OS_PASS);
+            putStr(o, sp, SubSearchManager.K_TMDB);
+            putStr(o, sp, "os_token");
+            o.put(SubSearchManager.K_EN_SUBDL,
+                    sp.getBoolean(SubSearchManager.K_EN_SUBDL, true));
+            o.put(SubSearchManager.K_EN_OS,
+                    sp.getBoolean(SubSearchManager.K_EN_OS, true));
+            o.put(SubSearchManager.K_EN_SUBSOURCE,
+                    sp.getBoolean(SubSearchManager.K_EN_SUBSOURCE, true));
+            java.io.OutputStream out =
+                    getContentResolver().openOutputStream(uri);
+            out.write(o.toString().getBytes("UTF-8"));
+            out.close();
+            toast("Da luu sao luu (giu file nay can than, co key).");
+        } catch (Exception e) {
+            toast("Luu that bai: " + e.getMessage());
+        }
+    }
+
+    private static void putStr(org.json.JSONObject o, SharedPreferences sp,
+                               String k) {
+        try {
+            o.put(k, sp.getString(k, ""));
+        } catch (Exception ignored) {}
+    }
+
+    private void readRestore(Uri uri) {
+        try {
+            InputStream in = getContentResolver().openInputStream(uri);
+            byte[] buf = new byte[65536];
+            StringBuilder sb = new StringBuilder();
+            int total = 0, n;
+            while ((n = in.read(buf)) > 0) {
+                total += n;
+                if (total > 65536) break;
+                sb.append(new String(buf, 0, n, "UTF-8"));
+            }
+            in.close();
+            org.json.JSONObject o = new org.json.JSONObject(sb.toString());
+            if (!"subtts".equals(o.optString("app", ""))) {
+                toast("File nay khong phai sao luu Sub TTS.");
+                return;
+            }
+            SharedPreferences sp =
+                    getSharedPreferences("webtts", MODE_PRIVATE);
+            SharedPreferences.Editor ed = sp.edit();
+            ed.putFloat("rate", (float) o.optDouble("rate", 1.0));
+            ed.putInt("ttsVol", o.optInt("ttsVol", 100));
+            ed.putInt("voice", o.optInt("voice", 0));
+            ed.putBoolean("splitAudio", o.optBoolean("splitAudio", true));
+            ed.putFloat("offset", (float) o.optDouble("offset", 0));
+            ed.putFloat("totalLen", (float) o.optDouble("totalLen", 0));
+            getStr(o, ed, SubSearchManager.K_SUBDL);
+            getStr(o, ed, SubSearchManager.K_SUBSOURCE);
+            getStr(o, ed, SubSearchManager.K_OS);
+            getStr(o, ed, SubSearchManager.K_OS_USER);
+            getStr(o, ed, SubSearchManager.K_OS_PASS);
+            getStr(o, ed, SubSearchManager.K_TMDB);
+            getStr(o, ed, "os_token");
+            ed.putBoolean(SubSearchManager.K_EN_SUBDL,
+                    o.optBoolean(SubSearchManager.K_EN_SUBDL, true));
+            ed.putBoolean(SubSearchManager.K_EN_OS,
+                    o.optBoolean(SubSearchManager.K_EN_OS, true));
+            ed.putBoolean(SubSearchManager.K_EN_SUBSOURCE,
+                    o.optBoolean(SubSearchManager.K_EN_SUBSOURCE, true));
+            ed.apply();
+            refreshAllUi();
+            toast("Da khoi phuc xong.");
+        } catch (Exception e) {
+            toast("Khoi phuc that bai: " + e.getMessage());
+        }
+    }
+
+    private static void getStr(org.json.JSONObject o,
+                               SharedPreferences.Editor ed, String k) {
+        try {
+            if (o.has(k)) ed.putString(k, o.optString(k, ""));
+        } catch (Exception ignored) {}
+    }
+
+    /** Nap lai toan bo UI + day xuong service sau khi khoi phuc. */
+    private void refreshAllUi() {
+        SharedPreferences sp =
+                getSharedPreferences("webtts", MODE_PRIVATE);
+        rate = sp.getFloat("rate", 1.0f);
+        ttsVol = sp.getInt("ttsVol", 100);
+        voice = sp.getInt("voice", TtsPlaybackService.VOICE_GOOGLE);
+        totalLen = sp.getFloat("totalLen", 0);
+        seekRate.setProgress(Math.round((rate - 0.5f) / 2.0f * 200));
+        tvRate.setText(String.format(Locale.US, "%.1fx", rate));
+        seekTtsVol.setProgress(ttsVol);
+        tvTtsVol.setText(ttsVol + "%");
+        if (etTotalLen != null) {
+            etTotalLen.setText(totalLen > 0 ? fmtHMS(totalLen) : "");
+        }
+        refreshPlayBtn();
+        refreshVoiceUi();
+        refreshCacheBtn();
+        ensureService();
+        TtsPlaybackService.setRate(rate);
+        TtsPlaybackService.setTtsVolume(ttsVol);
+        TtsPlaybackService.setVoice(voice);
+        TtsPlaybackService.setTotalLen(totalLen);
+        TtsPlaybackService.setSplitAudio(sp.getBoolean("splitAudio", true));
+        syncUi();
     }
 
     private void setPlaying(boolean p) {

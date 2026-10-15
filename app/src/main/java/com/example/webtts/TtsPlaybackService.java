@@ -303,6 +303,11 @@ public class TtsPlaybackService extends Service
     }
 
     private void startFg() {
+        startForeground(NOTIF_ID, buildNotif());
+    }
+
+    /** Dung chung cho startFg + updateNotif (khong de mat nut Play/Pause). */
+    private Notification buildNotif() {
         NotificationManager nm =
                 (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         if (Build.VERSION.SDK_INT >= 26) {
@@ -319,7 +324,7 @@ public class TtsPlaybackService extends Service
         tgI.setAction(ACTION_TOGGLE);
         PendingIntent tgPi = PendingIntent.getService(this, 2, tgI, flags);
 
-        Notification n = new NotificationCompat.Builder(this, CH_ID)
+        return new NotificationCompat.Builder(this, CH_ID)
                 .setContentTitle("Sub TTS dang chay nen")
                 .setContentText(notifText())
                 .setSmallIcon(android.R.drawable.ic_btn_speak_now)
@@ -328,7 +333,6 @@ public class TtsPlaybackService extends Service
                         playing ? "Pause" : "Play", tgPi)
                 .setOngoing(true)
                 .build();
-        startForeground(NOTIF_ID, n);
     }
 
     private String notifText() {
@@ -358,22 +362,23 @@ public class TtsPlaybackService extends Service
         return running.edge.getLastError();
     }
 
+    /** Han che spam notification: doi trang thai/cau moi cap nhat ngay,
+     *  khong thi toi da 1 lan/2 giay (ticker goi 10 lan/giay). */
+    private long lastNotifAt = 0;
+    private String lastNotifSig = "";
+
     private void updateNotif() {
         try {
+            String sig = playing + "|" + lastCueText + "|"
+                    + (edge != null ? edge.readyCount() : -1) + "|"
+                    + voice + "|" + sharedCount;
+            long now = android.os.SystemClock.elapsedRealtime();
+            if (sig.equals(lastNotifSig) && now - lastNotifAt < 2000) return;
+            lastNotifSig = sig;
+            lastNotifAt = now;
             NotificationManager nm =
                     (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-            Intent open = new Intent(this, MainActivity.class);
-            int flags = PendingIntent.FLAG_UPDATE_CURRENT;
-            if (Build.VERSION.SDK_INT >= 23) flags |= PendingIntent.FLAG_IMMUTABLE;
-            PendingIntent pi = PendingIntent.getActivity(this, 0, open, flags);
-            Notification n = new NotificationCompat.Builder(this, CH_ID)
-                    .setContentTitle("Sub TTS dang chay nen")
-                    .setContentText(notifText())
-                    .setSmallIcon(android.R.drawable.ic_btn_speak_now)
-                    .setContentIntent(pi)
-                    .setOngoing(true)
-                    .build();
-            nm.notify(NOTIF_ID, n);
+            nm.notify(NOTIF_ID, buildNotif());
         } catch (Exception ignored) {}
     }
 
