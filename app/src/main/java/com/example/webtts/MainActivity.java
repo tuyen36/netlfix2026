@@ -63,6 +63,7 @@ public class MainActivity extends AppCompatActivity {
     private Button btnJumpRemain;
     private Button btnSubSearch;
     private Button btnSubSettings;
+    private Button btnExit;
     private Button btnVoiceGoogle;
     private Button btnVoiceHoaiMy;
     private Button btnClearCache;
@@ -104,6 +105,7 @@ public class MainActivity extends AppCompatActivity {
         btnJumpRemain = findViewById(R.id.btnJumpRemain);
         btnSubSearch = findViewById(R.id.btnSubSearch);
         btnSubSettings = findViewById(R.id.btnSubSettings);
+        btnExit = findViewById(R.id.btnExit);
         btnVoiceGoogle = findViewById(R.id.btnVoiceGoogle);
         btnVoiceHoaiMy = findViewById(R.id.btnVoiceHoaiMy);
         btnClearCache = findViewById(R.id.btnClearCache);
@@ -136,6 +138,7 @@ public class MainActivity extends AppCompatActivity {
         btnJumpRemain.setOnClickListener(v -> jumpRemainDialog());
         btnSubSearch.setOnClickListener(v -> openSubSearch());
         btnSubSettings.setOnClickListener(v -> openSubSettings());
+        btnExit.setOnClickListener(v -> exitAppUi());
         btnVoiceGoogle.setOnClickListener(v -> setVoice(
                 TtsPlaybackService.VOICE_GOOGLE));
         btnVoiceHoaiMy.setOnClickListener(v -> setVoice(
@@ -531,8 +534,15 @@ public class MainActivity extends AppCompatActivity {
         btnVoiceHoaiMy.setAlpha(hoaimy ? 1.0f : 0.5f);
     }
 
-    private void clearCacheUi() {
-        ensureService();
+    /** Thoat han app: dung service chay nen + dong man hinh. */
+    private void exitAppUi() {
+        if (TtsPlaybackService.isRunning()) {
+            TtsPlaybackService.cmdExit(this);
+        }
+        finishAffinity();
+    }
+
+    private void clearCacheUi() {        ensureService();
         int removed = TtsPlaybackService.clearCache();
         refreshCacheBtn();
         toast(removed > 0 ? "Da xoa " + removed + " file cache."

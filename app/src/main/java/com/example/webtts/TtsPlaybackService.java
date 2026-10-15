@@ -54,6 +54,7 @@ public class TtsPlaybackService extends Service
     public static final String ACTION_NUDGE = "com.example.webtts.NUDGE";
     public static final String ACTION_SHOW_FLOAT = "com.example.webtts.SHOW_FLOAT";
     public static final String ACTION_HIDE_FLOAT = "com.example.webtts.HIDE_FLOAT";
+    public static final String ACTION_EXIT = "com.example.webtts.EXIT";
     public static final String EXTRA_DELTA = "delta";
 
     private static final String CH_ID = "webtts_playback";
@@ -396,6 +397,8 @@ public class TtsPlaybackService extends Service
                 showFloat();
             } else if (ACTION_HIDE_FLOAT.equals(a)) {
                 hideFloat();
+            } else if (ACTION_EXIT.equals(a)) {
+                exitApp();
             }
         }
         startFg();
@@ -497,6 +500,23 @@ public class TtsPlaybackService extends Service
         Intent i = new Intent(ctx, TtsPlaybackService.class);
         i.setAction(action);
         startSvc(ctx, i);
+    }
+
+    /** Thoat han app: dung service + go notification (goi tu Activity/nut noi). */
+    public static void cmdExit(Context ctx) {
+        Intent i = new Intent(ctx, TtsPlaybackService.class);
+        i.setAction(ACTION_EXIT);
+        startSvc(ctx, i);
+    }
+
+    /** Thoat han: dung doc + go nut noi + go notification + dung service. */
+    private void exitApp() {
+        setPlaying(false);
+        hideFloat();
+        try {
+            stopForeground(true);
+        } catch (Exception ignored) {}
+        stopSelf();
     }
 
     public static void cmdNudge(Context ctx, double delta) {
@@ -977,13 +997,10 @@ public class TtsPlaybackService extends Service
                     : "Sub chung loa media — phim cung to/nho theo.",
                     android.widget.Toast.LENGTH_SHORT).show();
         });
-        Button bStop = new Button(ctx);
-        bStop.setText("Dung doc");
-        bStop.setTextSize(12);
-        bStop.setOnClickListener(v -> {
-            setPlaying(false);
-            hideFloat();
-        });
+        Button bExit = new Button(ctx);
+        bExit.setText("Thoat");
+        bExit.setTextSize(12);
+        bExit.setOnClickListener(v -> exitApp());
         Button bOpen = new Button(ctx);
         bOpen.setText("Cai dat");
         bOpen.setTextSize(12);
@@ -995,7 +1012,7 @@ public class TtsPlaybackService extends Service
         });
         row3.addView(bHide);
         row3.addView(bSplit);
-        row3.addView(bStop);
+        row3.addView(bExit);
         row3.addView(bOpen);
         floatPanel.addView(row3);
 

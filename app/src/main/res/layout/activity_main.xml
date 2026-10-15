@@ -348,6 +348,17 @@
                 android:textSize="13sp" />
         </LinearLayout>
 
+        <!-- Thoat han app (tat chay nen) -->
+        <Button
+            android:id="@+id/btnExit"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:backgroundTint="#A40E26"
+            android:text="⏻  Thoat app (tat chay nen)"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
