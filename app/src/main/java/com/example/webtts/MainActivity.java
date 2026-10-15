@@ -1233,8 +1233,7 @@ public class MainActivity extends AppCompatActivity {
                     android.content.res.ColorStateList.valueOf(0xFFA40E26));
         } else {
             btnPlayPause.setText("▶  Play");
-            btnPlayPause.setBackgroundTintList(
-                    android.content.res.ColorStateList.valueOf(0xFFE50914));
+            btnPlayPause.setBackgroundTintList(null);
         }
     }
 

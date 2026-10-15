@@ -1,11 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Sub TTS — ban rieng chay song song app Netflix goc.
   Bo WebView + offset. UI hien dai: the cau dang doc + nut Play/Pause tron. -->
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#0D1117"
-    android:fillViewport="true">
+    android:orientation="vertical">
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -51,40 +57,6 @@
             android:text="Chua co phu de — chon file .srt"
             android:textColor="#8B949E"
             android:textSize="13sp" />
-
-        <!-- Thanh tab: Xem / Tim sub / Cai dat -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:orientation="horizontal">
-
-            <Button
-                android:id="@+id/btnTabWatch"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="▶  Xem"
-                android:textSize="13sp" />
-
-            <Button
-                android:id="@+id/btnTabSearch"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:layout_weight="1"
-                android:text="🔍  Tim sub"
-                android:textSize="13sp" />
-
-            <Button
-                android:id="@+id/btnTabSaved"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:layout_weight="1"
-                android:text="💾  Da luu"
-                android:textSize="13sp" />
-        </LinearLayout>
 
         <!-- TAB Xem: the cau + dieu khien phat -->
         <LinearLayout
@@ -172,6 +144,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
                 android:layout_weight="2"
+                android:minHeight="56dp"
                 android:text="▶  Play" />
 
             <Button
@@ -508,6 +481,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
+            android:minHeight="52dp"
             android:backgroundTint="#A40E26"
             android:text="⏻  Thoat app (tat chay nen)"
             android:textSize="14sp"
@@ -524,4 +498,44 @@
         </LinearLayout>
 
     </LinearLayout>
-</ScrollView>
+    </ScrollView>
+
+    <!-- Thanh tab duoi kieu mau -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#161B22"
+        android:orientation="horizontal"
+        android:padding="8dp">
+
+        <Button
+            android:id="@+id/btnTabWatch"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:minHeight="54dp"
+            android:text="▶  Xem"
+            android:textSize="14sp" />
+
+        <Button
+            android:id="@+id/btnTabSearch"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:minHeight="54dp"
+            android:text="🔍  Tim sub"
+            android:textSize="14sp" />
+
+        <Button
+            android:id="@+id/btnTabSaved"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:minHeight="54dp"
+            android:text="💾  Da luu"
+            android:textSize="14sp" />
+    </LinearLayout>
+
+</LinearLayout>
