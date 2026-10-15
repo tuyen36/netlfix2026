@@ -1100,13 +1100,13 @@ public class TtsPlaybackService extends Service
         LinearLayout rowNudge = new LinearLayout(ctx);
         rowNudge.setOrientation(LinearLayout.HORIZONTAL);
         Button bBack = new Button(ctx);
-        bBack.setText("-1s");
+        bBack.setText("-10s");
         bBack.setTextSize(12);
-        bBack.setOnClickListener(v -> nudge(-1.0));
+        bBack.setOnClickListener(v -> nudge(-10.0));
         Button bFwd = new Button(ctx);
-        bFwd.setText("+1s");
+        bFwd.setText("+10s");
         bFwd.setTextSize(12);
-        bFwd.setOnClickListener(v -> nudge(1.0));
+        bFwd.setOnClickListener(v -> nudge(10.0));
         rowNudge.addView(bBack);
         rowNudge.addView(bFwd);
         floatMore.addView(rowNudge);

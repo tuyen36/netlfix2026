@@ -8,7 +8,7 @@ Nut noi gon: cau + gio + Play/⏮/⏭ + nut ⋯ mo them.
 
 1. Chon file `.srt` → Play.
 2. Thoat sang **app Netflix goc** xem phim.
-3. Dieu khien nhanh bang **nut noi mo 30%** (Play/Pause, -1s/+1s,
+3. Dieu khien nhanh bang **nut noi mo 30%** (Play/Pause, -10s/+10s,
    gio chay `mm:ss`, volume sub, chon giong, tach/gop loa).
 4. Muon nhay toi doan khac: keo **thanh timeline** (trong app hoac tren
    nut noi) roi tha tay — sub phat tiep tu moc do. Hoac bam
@@ -18,7 +18,7 @@ Nut noi gon: cau + gio + Play/⏮/⏭ + nut ⋯ mo them.
    **gio con lai** (`-25:30`) giong het Netflix de so truc tiep.
    Muon nhay nhanh: bam **Nhap gio con lai** → go con so dang thay
    tren Netflix (vd `25:30`) → sub nhay toi dung cho, tinh chinh
-   them bang `-1s/+1s`.
+   them bang `-10s/+10s`.
 
 ## Tim sub online (SubDL / OpenSubtitles / SubSource)
 
