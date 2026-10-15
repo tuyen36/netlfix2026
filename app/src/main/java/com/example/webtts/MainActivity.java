@@ -392,12 +392,12 @@ public class MainActivity extends AppCompatActivity {
                 season, episode, useDl, useOs, useSs,
                 new SubSearchManager.SearchCb() {
                     @Override public void onOk(List<SubResult> rs, String warn) {
-                        if (!warn.isEmpty()) tvStatus.setText(warn);
+                        if (!warn.isEmpty()) tvStatus.setText(shortMsg(warn));
                         showSubResults(rs);
                     }
                     @Override public void onError(String msg) {
-                        tvStatus.setText(msg);
-                        toast(msg);
+                        tvStatus.setText(shortMsg(msg));
+                        toast(shortMsg(msg));
                     }
                 });
     }
@@ -423,8 +423,8 @@ public class MainActivity extends AppCompatActivity {
                         useLoadedCues(cues, "Da nap " + label);
                     }
                     @Override public void onError(String msg) {
-                        tvStatus.setText(msg);
-                        toast(msg);
+                        tvStatus.setText(shortMsg(msg));
+                        toast(shortMsg(msg));
                     }
                 });
     }
@@ -719,6 +719,13 @@ public class MainActivity extends AppCompatActivity {
 
     private void toast(String s) {
         Toast.makeText(this, s, Toast.LENGTH_SHORT).show();
+    }
+
+    /** Cat thong bao con ngan (<=300 ky tu) de khong tran man hinh. */
+    private static String shortMsg(String s) {
+        if (s == null) return "";
+        s = s.trim().replaceAll("\\s+", " ");
+        return s.length() > 300 ? s.substring(0, 300) : s;
     }
 
     @Override

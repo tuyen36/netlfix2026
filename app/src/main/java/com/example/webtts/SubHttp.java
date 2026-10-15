@@ -90,10 +90,14 @@ final class SubHttp {
             int code = c.getResponseCode();
             InputStream in = (code >= 200 && code < 300)
                     ? c.getInputStream() : c.getErrorStream();
-            String text = in == null ? "" : readText(in, 64 * 1024);
+            // Thanh cong: doc toi 512KB (list ket qua co khi >64KB).
+            // Loi: chi giu 300 ky tu dau de hien, tranh tran man hinh.
+            String text = in == null ? "" : readText(in, 512 * 1024);
             if (code < 200 || code >= 300) {
+                String shortText = text.length() > 300
+                        ? text.substring(0, 300) : text;
                 throw new Exception("HTTP " + code
-                        + (text.isEmpty() ? "" : ": " + text));
+                        + (shortText.isEmpty() ? "" : ": " + shortText));
             }
             return text;
         } finally {
