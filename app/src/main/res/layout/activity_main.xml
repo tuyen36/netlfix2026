@@ -75,15 +75,6 @@
                 android:layout_weight="1"
                 android:text="🔍  Tim sub"
                 android:textSize="13sp" />
-
-            <Button
-                android:id="@+id/btnTabSetup"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:layout_weight="1"
-                android:text="⚙  Cai dat"
-                android:textSize="13sp" />
         </LinearLayout>
 
         <!-- TAB Xem: the cau + dieu khien phat -->

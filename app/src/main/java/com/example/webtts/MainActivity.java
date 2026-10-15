@@ -73,7 +73,6 @@ public class MainActivity extends AppCompatActivity {
     private Button btnExit;
     private Button btnTabWatch;
     private Button btnTabSearch;
-    private Button btnTabSetup;
     private LinearLayout paneWatch;
     private LinearLayout paneSearch;
     private LinearLayout paneSetup;
@@ -142,7 +141,6 @@ public class MainActivity extends AppCompatActivity {
         tvCueSize = findViewById(R.id.tvCueSize);
         btnTabWatch = findViewById(R.id.btnTabWatch);
         btnTabSearch = findViewById(R.id.btnTabSearch);
-        btnTabSetup = findViewById(R.id.btnTabSetup);
         paneWatch = findViewById(R.id.paneWatch);
         paneSearch = findViewById(R.id.paneSearch);
         paneSetup = findViewById(R.id.paneSetup);
@@ -184,7 +182,6 @@ public class MainActivity extends AppCompatActivity {
         btnSleep.setOnClickListener(v -> sleepDialog());
         btnTabWatch.setOnClickListener(v -> showPane(0));
         btnTabSearch.setOnClickListener(v -> showPane(1));
-        btnTabSetup.setOnClickListener(v -> showPane(2));
         btnExit.setOnClickListener(v -> exitAppUi());
         btnVoiceGoogle.setOnClickListener(v -> setVoice(
                 TtsPlaybackService.VOICE_GOOGLE));
@@ -1191,16 +1188,15 @@ public class MainActivity extends AppCompatActivity {
                 .show();
     }
 
-    /** Chuyen tab man hinh: 0 = Xem, 1 = Tim sub, 2 = Cai dat. */
+    /** Chuyen tab man hinh: 0 = Xem + Cai dat, 1 = Tim sub. */
     private void showPane(int i) {
         if (paneWatch == null) return;
-        if (i < 0 || i > 2) i = 0;
+        if (i < 0 || i > 1) i = 0;
         paneWatch.setVisibility(i == 0 ? View.VISIBLE : View.GONE);
+        paneSetup.setVisibility(i == 0 ? View.VISIBLE : View.GONE);
         paneSearch.setVisibility(i == 1 ? View.VISIBLE : View.GONE);
-        paneSetup.setVisibility(i == 2 ? View.VISIBLE : View.GONE);
         btnTabWatch.setAlpha(i == 0 ? 1.0f : 0.5f);
         btnTabSearch.setAlpha(i == 1 ? 1.0f : 0.5f);
-        btnTabSetup.setAlpha(i == 2 ? 1.0f : 0.5f);
         getSharedPreferences("webtts", MODE_PRIVATE)
                 .edit().putInt("tab", i).apply();
     }

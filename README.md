@@ -1,7 +1,7 @@
 # Sub TTS — ban rieng chay song song app Netflix goc
 
-Bo WebView + offset. 3 tab: **Xem** (the cau + dieu khien) /
-**Tim sub** (file + online + sao luu) / **Cai dat**.
+Bo WebView + offset. 2 tab: **Xem** (the cau + dieu khien + cai dat) /
+**Tim sub** (file + online + sao luu).
 Nut noi gon: cau + gio + Play/⏮/⏭ + nut ⋯ mo them.
 
 ## Cach dung
