@@ -445,7 +445,11 @@ public class MainActivity extends AppCompatActivity {
         toast(label + ". Bam Play roi sang Netflix.");
         refreshCacheBtn();
         // Ho so phim: khoi phuc tong gio da luu (tranh lan phim khac).
-        float savedT = TtsPlaybackService.savedTotal(filmId);
+        // Doc thang tu prefs (khong qua service) de chay ca khi
+        // service chua kip khoi dong (mo app sau khi kill).
+        SharedPreferences rspf =
+                getSharedPreferences("webtts", MODE_PRIVATE);
+        float savedT = rspf.getFloat("ftotal_" + filmId, 0);
         if (savedT > 0) {
             totalLen = savedT;
             getSharedPreferences("webtts", MODE_PRIVATE)
@@ -461,7 +465,7 @@ public class MainActivity extends AppCompatActivity {
         }
         syncUi();
         // Hoi xem tiep neu lan truoc dung giua chung.
-        float savedP = TtsPlaybackService.savedPos(filmId);
+        float savedP = rspf.getFloat("fpos_" + filmId, -1);
         if (savedP > 10 && duration > 0 && savedP < duration - 5) {
             final double resumeAt = savedP;
             new AlertDialog.Builder(this)

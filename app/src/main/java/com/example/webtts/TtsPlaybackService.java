@@ -784,7 +784,8 @@ public class TtsPlaybackService extends Service
         }
     }
 
-    /** Luu vi tri + tong phim hien tai (goi khi pause/seek/thoat). */
+    /** Luu vi tri + tong phim hien tai (goi khi pause/seek/thoat).
+     *  Dung commit() dong bo de kill app ngay van khong mat. */
     public static void saveFilmNow() {
         TtsPlaybackService r = running;
         if (r == null || r.filmId.isEmpty()) return;
@@ -794,7 +795,7 @@ public class TtsPlaybackService extends Service
                     .putFloat("fpos_" + r.filmId, (float) pos)
                     .putFloat("ftotal_" + r.filmId, (float) r.totalLen)
                     .putString("fname_" + r.filmId, r.filmName)
-                    .apply();
+                    .commit();
         } catch (Exception ignored) {}
     }
 
