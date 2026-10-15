@@ -184,19 +184,11 @@
                 android:textSize="18sp" />
         </LinearLayout>
 
-        <!-- Can gio dem nguoc voi Netflix (Netflix chi bao gio con lai) -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            android:text="Can gio voi Netflix"
-            android:textColor="#8B949E"
-            android:textSize="12sp" />
-
+        <!-- Can gio dem nguoc voi Netflix: tong phim + Luu + nhap gio con lai -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
+            android:layout_marginTop="8dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
@@ -205,28 +197,27 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:hint="Tong thoi luong phim (vd 1:32:00)"
+                android:hint="Tổng phim (vd 1:32:00)"
                 android:inputType="text"
                 android:textColor="#FFFFFF"
                 android:textColorHint="#6E7681"
-                android:textSize="14sp" />
+                android:textSize="13sp" />
 
             <Button
                 android:id="@+id/btnSetTotal"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
-                android:text="Luu"
-                android:textSize="13sp" />
-        </LinearLayout>
+                android:text="Lưu" />
 
-        <Button
-            android:id="@+id/btnJumpRemain"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="⏱  Nhap gio con lai tren Netflix"
-            android:textSize="14sp" />
+            <Button
+                android:id="@+id/btnJumpRemain"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="⏱"
+                android:textSize="16sp" />
+        </LinearLayout>
 
         </LinearLayout>
 
