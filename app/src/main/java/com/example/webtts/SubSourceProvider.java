@@ -46,7 +46,7 @@ public class SubSourceProvider implements SubProvider {
         if (movieId == 0) return new ArrayList<>();
         String film = m0.optString("title", query);
         int year = m0.optInt("releaseYear", 0);
-        if (year > 0) film += " (" + year + ")";
+        String mediaType = SubResult.typeLabel(m0.optString("type", ""));
         // Anh bia phim (SubSource kem san, khong ton them request).
         String poster = "";
         JSONObject posters = m0.optJSONObject("posters");
@@ -71,7 +71,7 @@ public class SubSourceProvider implements SubProvider {
             if (rel.length() > 120) rel = rel.substring(0, 120);
             out.add(new SubResult(name(), film, s.optString("language", ""),
                     rel, SubHttp.sizeText(s.optLong("size", 0)),
-                    String.valueOf(sid), poster));
+                    String.valueOf(sid), poster, year, mediaType));
         }
         return out;
     }

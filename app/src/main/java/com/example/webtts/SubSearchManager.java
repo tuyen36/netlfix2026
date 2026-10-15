@@ -153,9 +153,9 @@ public final class SubSearchManager {
                     throw new Exception("Khong doc duoc phu de (dinh dang la).");
                 }
                 final List<SubtitleCue> f = cues;
-                ui.post(() -> cb.onOk(f, r.film.isEmpty()
+                ui.post(() -> cb.onOk(f, r.filmLine().isEmpty()
                         ? (cues.size() + " cau (" + r.provider + ")")
-                        : (r.film + ": " + cues.size() + " cau (" + r.provider + ")")));
+                        : (r.filmLine() + ": " + cues.size() + " cau (" + r.provider + ")")));
             } catch (Exception e) {
                 String m = e.getMessage();
                 if (m == null || m.isEmpty()) m = e.getClass().getSimpleName();

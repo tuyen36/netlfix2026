@@ -18,7 +18,8 @@ public class SubResultAdapter extends ArrayAdapter<SubResult> {
 
     private static class Holder {
         ImageView iv;
-        TextView tv;
+        TextView tvFilm;
+        TextView tvRelease;
     }
 
     public SubResultAdapter(Context ctx, List<SubResult> rs) {
@@ -37,10 +38,10 @@ public class SubResultAdapter extends ArrayAdapter<SubResult> {
             row.setPadding((int) (12 * den), (int) (8 * den),
                     (int) (12 * den), (int) (8 * den));
             ImageView iv = new ImageView(ctx);
-            // Anh chiem 2/3 ngang dong (weight 2 vs chu weight 1),
+            // Anh chiem 1/2 ngang dong (weight 1 vs chu weight 1),
             // giu ti le poster, tu gian cao.
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                    0, LinearLayout.LayoutParams.WRAP_CONTENT, 2f);
+                    0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
             lp.setMarginEnd((int) (10 * den));
             iv.setLayoutParams(lp);
             iv.setScaleType(ImageView.ScaleType.FIT_CENTER);
@@ -48,22 +49,37 @@ public class SubResultAdapter extends ArrayAdapter<SubResult> {
             iv.setMinimumHeight((int) (120 * den));
             iv.setBackgroundColor(0xFF1C2128);
             row.addView(iv);
-            TextView tv = new TextView(ctx);
-            tv.setLayoutParams(new LinearLayout.LayoutParams(
+            LinearLayout txtCol = new LinearLayout(ctx);
+            txtCol.setOrientation(LinearLayout.VERTICAL);
+            txtCol.setLayoutParams(new LinearLayout.LayoutParams(
                     0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-            tv.setTextColor(0xFFFFFFFF);
-            tv.setTextSize(14);
-            row.addView(tv);
+            TextView tvFilm = new TextView(ctx);
+            tvFilm.setTextColor(0xFFFFFFFF);
+            tvFilm.setTextSize(15);
+            tvFilm.setTypeface(tvFilm.getTypeface(),
+                    android.graphics.Typeface.BOLD);
+            tvFilm.setMaxLines(2);
+            tvFilm.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            txtCol.addView(tvFilm);
+            TextView tv = new TextView(ctx);
+            tv.setTextColor(0xFF8B949E);
+            tv.setTextSize(13);
+            tv.setMaxLines(3);
+            tv.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            txtCol.addView(tv);
+            row.addView(txtCol);
             h = new Holder();
             h.iv = iv;
-            h.tv = tv;
+            h.tvFilm = tvFilm;
+            h.tvRelease = tv;
             row.setTag(h);
             cv = row;
         } else {
             h = (Holder) cv.getTag();
         }
         if (r != null) {
-            h.tv.setText(r.label());
+            h.tvFilm.setText(r.filmLine());
+            h.tvRelease.setText(r.label());
             SubThumbLoader.load(h.iv, r.posterUrl);
         }
         return cv;

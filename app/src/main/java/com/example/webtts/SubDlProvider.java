@@ -41,13 +41,15 @@ public class SubDlProvider implements SubProvider {
         }
         JSONArray results = o.optJSONArray("results");
         String film = query;
+        int year = 0;
         if (results != null && results.length() > 0) {
             JSONObject r0 = results.optJSONObject(0);
             if (r0 != null) {
                 film = r0.optString("name", query);
-                if (r0.optInt("year", 0) > 0) film += " (" + r0.optInt("year") + ")";
+                year = r0.optInt("year", 0);
             }
         }
+        String mediaType = "tv".equals(type) ? "Phim bo" : "Phim le";
         List<SubResult> out = new ArrayList<>();
         JSONArray subs = o.optJSONArray("subtitles");
         if (subs == null) return out;
@@ -60,7 +62,8 @@ public class SubDlProvider implements SubProvider {
             String url = s.optString("url", "");
             if (url.isEmpty()) continue;
             if (url.startsWith("/")) url = "https://dl.subdl.com" + url;
-            out.add(new SubResult(name(), film, lang, rel, "", url));
+            out.add(new SubResult(name(), film, lang, rel, "", url,
+                    "", year, mediaType));
         }
         return out;
     }

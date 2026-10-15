@@ -84,6 +84,7 @@ public class OpenSubtitlesProvider implements SubProvider {
         }
         JSONObject o = new JSONObject(SubHttp.get(u.toString(), baseHeaders()));
         List<SubResult> out = new ArrayList<>();
+        String film = query;
         JSONArray data = o.optJSONArray("data");
         if (data == null) return out;
         for (int i = 0; i < data.length(); i++) {
@@ -111,8 +112,17 @@ public class OpenSubtitlesProvider implements SubProvider {
                 JSONObject r0 = rl.optJSONObject(0);
                 if (r0 != null) poster = r0.optString("img_url", "");
             }
-            out.add(new SubResult(name(), query, lang, rel, size,
-                    String.valueOf(fileId), poster));
+            // Nam + loai phim nam trong feature_details.
+            int year = 0;
+            String mediaType = "";
+            JSONObject feat = a.optJSONObject("feature_details");
+            if (feat != null) {
+                year = feat.optInt("year", 0);
+                mediaType = SubResult.typeLabel(feat.optString("feature_type", ""));
+                if (film.isEmpty()) film = feat.optString("title", film);
+            }
+            out.add(new SubResult(name(), film, lang, rel, size,
+                    String.valueOf(fileId), poster, year, mediaType));
             if (out.size() >= 30) break;
         }
         return out;
