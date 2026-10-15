@@ -1043,6 +1043,11 @@ public class MainActivity extends AppCompatActivity {
                     .putString("ffile_" + filmId, out.getAbsolutePath())
                     .putLong("ftime_" + filmId, System.currentTimeMillis())
                     .putInt("fcues_" + filmId, subs.size())
+                    // Ghi luon ten phim (truoc day chi ghi khi pause
+                    // nen mo tab Da luu som se thay ten mac dinh "phim").
+                    .putString("fname_" + filmId,
+                            filmName == null || filmName.isEmpty()
+                                    ? "phim" : filmName)
                     .apply();
         } catch (Exception ignored) {}
     }
