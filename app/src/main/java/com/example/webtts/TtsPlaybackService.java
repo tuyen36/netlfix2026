@@ -86,7 +86,6 @@ public class TtsPlaybackService extends Service
         lastCueText = "...";
         sleepAtElapsed = 0;
         sleepLeftMs = 0;
-        pausedByFocus = false;
         if (speaker != null) speaker.resetIndex();
         if (edge != null) edge.stopPlayer();
         refreshFloatTime();
@@ -146,47 +145,6 @@ public class TtsPlaybackService extends Service
     private long sleepAtElapsed = 0;
     /** Phan con lai (ms) khi dang pause — Play thi dem tiep. */
     private long sleepLeftMs = 0;
-    /** true = vua bi mat audio-focus (vd cuoc goi) nen tam dung. */
-    private boolean pausedByFocus = false;
-    private android.media.AudioManager audioMgr;
-    private final android.media.AudioManager.OnAudioFocusChangeListener focusListener =
-            new android.media.AudioManager.OnAudioFocusChangeListener() {
-                @Override public void onAudioFocusChange(int change) {
-                    if (change == android.media.AudioManager.AUDIOFOCUS_LOSS
-                            || change == android.media.AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) {
-                        // Cuoc goi den / app khac chiem loa: tam dung, co lai thi doc tiep.
-                        if (playing) {
-                            pausedByFocus = true;
-                            setPlaying(false);
-                        }
-                    } else if (change == android.media.AudioManager.AUDIOFOCUS_GAIN) {
-                        if (pausedByFocus) {
-                            pausedByFocus = false;
-                            if (!sharedSubs.isEmpty()) setPlaying(true);
-                        }
-                    }
-                }
-            };
-
-    private void requestFocus() {
-        try {
-            if (audioMgr == null) {
-                audioMgr = (android.media.AudioManager)
-                        getSystemService(AUDIO_SERVICE);
-            }
-            if (audioMgr != null) {
-                audioMgr.requestAudioFocus(focusListener,
-                        android.media.AudioManager.STREAM_MUSIC,
-                        android.media.AudioManager.AUDIOFOCUS_GAIN);
-            }
-        } catch (Exception ignored) {}
-    }
-
-    private void abandonFocus() {
-        try {
-            if (audioMgr != null) audioMgr.abandonAudioFocus(focusListener);
-        } catch (Exception ignored) {}
-    }
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable ticker = new Runnable() {
@@ -505,8 +463,6 @@ public class TtsPlaybackService extends Service
         }
         playing = p;
         if (p) {
-            pausedByFocus = false;
-            requestFocus();
             // Tiep tuc dem hen gio con do khi pause.
             if (sleepLeftMs > 0 && sleepAtElapsed <= 0) {
                 sleepAtElapsed = android.os.SystemClock.elapsedRealtime()
@@ -514,7 +470,6 @@ public class TtsPlaybackService extends Service
                 sleepLeftMs = 0;
             }
         } else {
-            abandonFocus();
             // Pause: dong bang hen gio, Play thi dem tiep.
             if (sleepAtElapsed > 0) {
                 sleepLeftMs = Math.max(0, sleepAtElapsed
@@ -1285,7 +1240,6 @@ public class TtsPlaybackService extends Service
     public void onDestroy() {
         handler.removeCallbacks(ticker);
         hideFloat();
-        abandonFocus();
         try {
             if (tts != null) {
                 tts.stop();

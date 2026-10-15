@@ -54,8 +54,10 @@ Nut noi gon: cau + gio + Play/⏮/⏭ + nut ⋯ mo them.
 
 - Moi phim (theo ten file sub) tu nho **tong gio + vi tri dung**: nap lai
   sub cu → app hoi **xem tiep tu mm:ss** (tong gio khoi phai nhap lai).
-- Nut **Hen gio tat**: Tat / 15 / 30 / 60 / 90 phut, het gio tu dung doc.
-- Co cuoc goi (mat audio-focus): tu tam dung, nghe xong tu doc tiep.
+- Nut **Hen gio tat**: Tat / 15 / 30 / 60 / 90 phut, het gio tu dung doc
+  (pause thi dem tiep khi Play, nap sub moi thi huy hen).
+- Cuoc goi den: he thong tu tat tieng media — nghe xong bam Play tiep
+  (lech gio thi nhay lai bang nut nhap gio con lai).
 
 ## Build
 
