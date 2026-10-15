@@ -1234,7 +1234,7 @@ public class MainActivity extends AppCompatActivity {
         } else {
             btnPlayPause.setText("▶  Play");
             btnPlayPause.setBackgroundTintList(
-                    android.content.res.ColorStateList.valueOf(0xFF1F6FEB));
+                    android.content.res.ColorStateList.valueOf(0xFFE50914));
         }
     }
 
@@ -1492,6 +1492,13 @@ public class MainActivity extends AppCompatActivity {
         btnTabWatch.setAlpha(i == 0 ? 1.0f : 0.5f);
         btnTabSearch.setAlpha(i == 1 ? 1.0f : 0.5f);
         if (btnTabSaved != null) btnTabSaved.setAlpha(i == 2 ? 1.0f : 0.5f);
+        android.content.res.ColorStateList red =
+                android.content.res.ColorStateList.valueOf(0xFFE50914);
+        btnTabWatch.setBackgroundTintList(i == 0 ? red : null);
+        btnTabSearch.setBackgroundTintList(i == 1 ? red : null);
+        if (btnTabSaved != null) {
+            btnTabSaved.setBackgroundTintList(i == 2 ? red : null);
+        }
         getSharedPreferences("webtts", MODE_PRIVATE)
                 .edit().putInt("tab", i).apply();
         if (i == 2) refreshSavedList();
