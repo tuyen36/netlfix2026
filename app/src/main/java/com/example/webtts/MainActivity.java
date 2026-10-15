@@ -9,6 +9,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.view.View;
 import android.widget.Button;
 import android.widget.SeekBar;
 import android.widget.TextView;
@@ -70,6 +71,12 @@ public class MainActivity extends AppCompatActivity {
     private Button btnRestore;
     private Button btnSleep;
     private Button btnExit;
+    private Button btnTabWatch;
+    private Button btnTabSearch;
+    private Button btnTabSetup;
+    private LinearLayout paneWatch;
+    private LinearLayout paneSearch;
+    private LinearLayout paneSetup;
     private Button btnVoiceGoogle;
     private Button btnVoiceHoaiMy;
     private Button btnVoiceNamMinh;
@@ -78,6 +85,10 @@ public class MainActivity extends AppCompatActivity {
     private SeekBar seekPos;
     private SeekBar seekRate;
     private SeekBar seekTtsVol;
+    private SeekBar seekCueSize;
+    private TextView tvCueSize;
+    /** Co chu cau dang doc (sp), mac dinh 17. */
+    private float cueSize = 17;
     /** true = user dang keo thanh timeline, tam dung tu dong cap nhat. */
     private boolean seeking = false;
 
@@ -127,6 +138,14 @@ public class MainActivity extends AppCompatActivity {
         seekPos = findViewById(R.id.seekPos);
         seekRate = findViewById(R.id.seekRate);
         seekTtsVol = findViewById(R.id.seekTtsVol);
+        seekCueSize = findViewById(R.id.seekCueSize);
+        tvCueSize = findViewById(R.id.tvCueSize);
+        btnTabWatch = findViewById(R.id.btnTabWatch);
+        btnTabSearch = findViewById(R.id.btnTabSearch);
+        btnTabSetup = findViewById(R.id.btnTabSetup);
+        paneWatch = findViewById(R.id.paneWatch);
+        paneSearch = findViewById(R.id.paneSearch);
+        paneSetup = findViewById(R.id.paneSetup);
 
         SharedPreferences sp =
                 getSharedPreferences("webtts", MODE_PRIVATE);
@@ -142,7 +161,14 @@ public class MainActivity extends AppCompatActivity {
         tvRate.setText(String.format(Locale.US, "%.1fx", rate));
         seekTtsVol.setProgress(ttsVol);
         tvTtsVol.setText(ttsVol + "%");
+        cueSize = sp.getFloat("cueSize", 17);
+        if (cueSize < 12) cueSize = 12;
+        if (cueSize > 30) cueSize = 30;
+        tvCue.setTextSize(cueSize);
+        seekCueSize.setProgress(Math.round(cueSize - 12));
+        tvCueSize.setText(String.valueOf(Math.round(cueSize)));
         refreshPlayBtn();
+        showPane(sp.getInt("tab", 0));
 
         findViewById(R.id.btnPickSrt).setOnClickListener(v -> pickSrt());
         btnPlayPause.setOnClickListener(v -> setPlaying(!playing));
@@ -156,6 +182,9 @@ public class MainActivity extends AppCompatActivity {
         btnBackup.setOnClickListener(v -> startBackup());
         btnRestore.setOnClickListener(v -> startRestore());
         btnSleep.setOnClickListener(v -> sleepDialog());
+        btnTabWatch.setOnClickListener(v -> showPane(0));
+        btnTabSearch.setOnClickListener(v -> showPane(1));
+        btnTabSetup.setOnClickListener(v -> showPane(2));
         btnExit.setOnClickListener(v -> exitAppUi());
         btnVoiceGoogle.setOnClickListener(v -> setVoice(
                 TtsPlaybackService.VOICE_GOOGLE));
@@ -205,6 +234,17 @@ public class MainActivity extends AppCompatActivity {
                 tvTtsVol.setText(p + "%");
                 TtsPlaybackService.setTtsVolume(p);
                 sp.edit().putInt("ttsVol", p).apply();
+            }
+            @Override public void onStartTrackingTouch(SeekBar s) {}
+            @Override public void onStopTrackingTouch(SeekBar s) {}
+        });
+        // Co chu cau dang doc: 12sp - 30sp.
+        seekCueSize.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override public void onProgressChanged(SeekBar s, int p, boolean fromUser) {
+                cueSize = 12 + p;
+                tvCue.setTextSize(cueSize);
+                tvCueSize.setText(String.valueOf(12 + p));
+                sp.edit().putFloat("cueSize", cueSize).apply();
             }
             @Override public void onStartTrackingTouch(SeekBar s) {}
             @Override public void onStopTrackingTouch(SeekBar s) {}
@@ -722,6 +762,7 @@ public class MainActivity extends AppCompatActivity {
             o.put("splitAudio", sp.getBoolean("splitAudio", true));
             o.put("offset", (double) sp.getFloat("offset", 0f));
             o.put("totalLen", (double) sp.getFloat("totalLen", 0f));
+            o.put("cueSize", (double) sp.getFloat("cueSize", 17f));
             putStr(o, sp, SubSearchManager.K_SUBDL);
             putStr(o, sp, SubSearchManager.K_SUBSOURCE);
             putStr(o, sp, SubSearchManager.K_OS);
@@ -778,6 +819,7 @@ public class MainActivity extends AppCompatActivity {
             ed.putBoolean("splitAudio", o.optBoolean("splitAudio", true));
             ed.putFloat("offset", (float) o.optDouble("offset", 0));
             ed.putFloat("totalLen", (float) o.optDouble("totalLen", 0));
+            ed.putFloat("cueSize", (float) o.optDouble("cueSize", 17));
             getStr(o, ed, SubSearchManager.K_SUBDL);
             getStr(o, ed, SubSearchManager.K_SUBSOURCE);
             getStr(o, ed, SubSearchManager.K_OS);
@@ -821,6 +863,12 @@ public class MainActivity extends AppCompatActivity {
         if (etTotalLen != null) {
             etTotalLen.setText(totalLen > 0 ? fmtHMS(totalLen) : "");
         }
+        cueSize = sp.getFloat("cueSize", 17);
+        if (cueSize < 12) cueSize = 12;
+        if (cueSize > 30) cueSize = 30;
+        seekCueSize.setProgress(Math.round(cueSize - 12));
+        tvCueSize.setText(String.valueOf(Math.round(cueSize)));
+        tvCue.setTextSize(cueSize);
         refreshPlayBtn();
         refreshVoiceUi();
         refreshCacheBtn();
@@ -1099,6 +1147,20 @@ public class MainActivity extends AppCompatActivity {
                 })
                 .setNegativeButton("Huy", null)
                 .show();
+    }
+
+    /** Chuyen tab man hinh: 0 = Xem, 1 = Tim sub, 2 = Cai dat. */
+    private void showPane(int i) {
+        if (paneWatch == null) return;
+        if (i < 0 || i > 2) i = 0;
+        paneWatch.setVisibility(i == 0 ? View.VISIBLE : View.GONE);
+        paneSearch.setVisibility(i == 1 ? View.VISIBLE : View.GONE);
+        paneSetup.setVisibility(i == 2 ? View.VISIBLE : View.GONE);
+        btnTabWatch.setAlpha(i == 0 ? 1.0f : 0.5f);
+        btnTabSearch.setAlpha(i == 1 ? 1.0f : 0.5f);
+        btnTabSetup.setAlpha(i == 2 ? 1.0f : 0.5f);
+        getSharedPreferences("webtts", MODE_PRIVATE)
+                .edit().putInt("tab", i).apply();
     }
 
     private void syncUi() {

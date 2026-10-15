@@ -251,6 +251,8 @@ public class TtsPlaybackService extends Service
     private TextView floatTime;
     /** Gio con lai dem nguoc nhu Netflix. */
     private TextView floatRemain;
+    /** Cum mo rong (an theo mac dinh): seek, +-1s, volume, giong, ... */
+    private LinearLayout floatMore;
     private SeekBar floatSeek;
     private Button floatPlayPause;
     private Button floatVoiceBtn;
@@ -945,6 +947,7 @@ public class TtsPlaybackService extends Service
         floatShown = false;
         floatRoot = null;
         floatSeek = null;
+        floatMore = null;
     }
 
     private void buildFloatViews() {
@@ -1040,6 +1043,12 @@ public class TtsPlaybackService extends Service
         floatRemain.setTextSize(12);
         floatPanel.addView(floatRemain);
 
+        // Mac dinh gon: cau + gio + Play/⏮/⏭ + nut ⋯.
+        // Bam ⋯ thi hien them: timeline, +-1s, volume, giong, An/Tach/Thoat/Cai dat.
+        floatMore = new LinearLayout(ctx);
+        floatMore.setOrientation(LinearLayout.VERTICAL);
+        floatMore.setVisibility(View.GONE);
+
         // Thanh timeline tren nut noi: keo de nhay gio ngay ca khi
         // dang xem Netflix, khong can mo lai app.
         floatSeek = new SeekBar(ctx);
@@ -1054,7 +1063,7 @@ public class TtsPlaybackService extends Service
                 refreshFloatTime();
             }
         });
-        floatPanel.addView(floatSeek);
+        floatMore.addView(floatSeek);
 
         LinearLayout row1 = new LinearLayout(ctx);
         row1.setOrientation(LinearLayout.HORIZONTAL);
@@ -1070,6 +1079,18 @@ public class TtsPlaybackService extends Service
         bNextCue.setText("⏭");
         bNextCue.setTextSize(12);
         bNextCue.setOnClickListener(v -> jumpCue(1));
+        Button bMore = new Button(ctx);
+        bMore.setText("⋯");
+        bMore.setTextSize(12);
+        bMore.setOnClickListener(v -> toggleMore());
+        row1.addView(floatPlayPause);
+        row1.addView(bPrevCue);
+        row1.addView(bNextCue);
+        row1.addView(bMore);
+        floatPanel.addView(row1);
+
+        LinearLayout rowNudge = new LinearLayout(ctx);
+        rowNudge.setOrientation(LinearLayout.HORIZONTAL);
         Button bBack = new Button(ctx);
         bBack.setText("-1s");
         bBack.setTextSize(12);
@@ -1078,12 +1099,9 @@ public class TtsPlaybackService extends Service
         bFwd.setText("+1s");
         bFwd.setTextSize(12);
         bFwd.setOnClickListener(v -> nudge(1.0));
-        row1.addView(floatPlayPause);
-        row1.addView(bPrevCue);
-        row1.addView(bNextCue);
-        row1.addView(bBack);
-        row1.addView(bFwd);
-        floatPanel.addView(row1);
+        rowNudge.addView(bBack);
+        rowNudge.addView(bFwd);
+        floatMore.addView(rowNudge);
 
         LinearLayout row2 = new LinearLayout(ctx);
         row2.setOrientation(LinearLayout.HORIZONTAL);
@@ -1117,7 +1135,7 @@ public class TtsPlaybackService extends Service
         row2.addView(lb);
         row2.addView(vol);
         row2.addView(vv);
-        floatPanel.addView(row2);
+        floatMore.addView(row2);
 
         // Hang chon giong: Google offline / HoaiMy online.
         LinearLayout rowVoice = new LinearLayout(ctx);
@@ -1133,7 +1151,7 @@ public class TtsPlaybackService extends Service
                     .edit().putInt("voice", nv).apply();
         });
         rowVoice.addView(floatVoiceBtn);
-        floatPanel.addView(rowVoice);
+        floatMore.addView(rowVoice);
 
         LinearLayout row3 = new LinearLayout(ctx);
         row3.setOrientation(LinearLayout.HORIZONTAL);
@@ -1172,7 +1190,8 @@ public class TtsPlaybackService extends Service
         row3.addView(bSplit);
         row3.addView(bExit);
         row3.addView(bOpen);
-        floatPanel.addView(row3);
+        floatMore.addView(row3);
+        floatPanel.addView(floatMore);
 
         root.addView(floatDot);
         root.addView(floatPanel);
@@ -1187,6 +1206,13 @@ public class TtsPlaybackService extends Service
             if (floatCue != null) floatCue.setText(lastCueText);
             refreshFloatTime();
         }
+    }
+
+    /** An/hien cum mo rong (timeline, volume, giong, ...). */
+    private void toggleMore() {
+        if (floatMore == null) return;
+        floatMore.setVisibility(floatMore.getVisibility() == View.VISIBLE
+                ? View.GONE : View.VISIBLE);
     }
 
     /** Cap nhat "mm:ss / mm:ss" tren nut noi de can voi Netflix. */

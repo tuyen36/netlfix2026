@@ -52,6 +52,47 @@
             android:textColor="#8B949E"
             android:textSize="13sp" />
 
+        <!-- Thanh tab: Xem / Tim sub / Cai dat -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btnTabWatch"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="▶  Xem"
+                android:textSize="13sp" />
+
+            <Button
+                android:id="@+id/btnTabSearch"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:text="🔍  Tim sub"
+                android:textSize="13sp" />
+
+            <Button
+                android:id="@+id/btnTabSetup"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:text="⚙  Cai dat"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <!-- TAB Xem: the cau + dieu khien phat -->
+        <LinearLayout
+            android:id="@+id/paneWatch"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
         <!-- The cau dang doc -->
         <LinearLayout
             android:layout_width="match_parent"
@@ -188,6 +229,16 @@
             android:textSize="17sp"
             android:textStyle="bold" />
 
+        </LinearLayout>
+
+        <!-- TAB Tim sub: chon file + online + sao luu -->
+        <LinearLayout
+            android:id="@+id/paneSearch"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
         <!-- Chon sub -->
         <Button
             android:id="@+id/btnPickSrt"
@@ -246,6 +297,18 @@
                 android:text="📥  Khoi phuc"
                 android:textSize="13sp" />
         </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- TAB Cai dat: hen gio + giong + toc do + volume + nut noi + thoat -->
+        <LinearLayout
+            android:id="@+id/paneSetup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+        <!-- Hen gio tat doc -->
 
         <!-- Hen gio tat doc -->
         <Button
@@ -366,6 +429,40 @@
                 android:textStyle="bold" />
         </LinearLayout>
 
+        <!-- Co chu cau dang doc -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="Co chu cau dang doc"
+            android:textColor="#8B949E"
+            android:textSize="12sp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <SeekBar
+                android:id="@+id/seekCueSize"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:max="18"
+                android:progress="5" />
+
+            <TextView
+                android:id="@+id/tvCueSize"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="17"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
         <!-- Nut noi + xoa cache -->
         <LinearLayout
             android:layout_width="match_parent"
@@ -409,6 +506,8 @@
             android:text="Cach dung: chon .srt → Play → thoat sang app Netflix xem. Dieu khien nhanh bang nut noi mo 30% tren man hinh Netflix."
             android:textColor="#6E7681"
             android:textSize="12sp" />
+
+        </LinearLayout>
 
     </LinearLayout>
 </ScrollView>
