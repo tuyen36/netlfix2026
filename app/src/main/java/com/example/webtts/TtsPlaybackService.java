@@ -207,7 +207,7 @@ public class TtsPlaybackService extends Service
                     sleepLeftMs = 0;
                     setPlaying(false);
                     try {
-                        android.widget.Toast.makeText(this,
+                        android.widget.Toast.makeText(TtsPlaybackService.this,
                                 "Het gio hen — da dung doc.",
                                 android.widget.Toast.LENGTH_SHORT).show();
                     } catch (Exception ignored) {}
