@@ -306,7 +306,7 @@ public class TtsPlaybackService extends Service
                 (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         if (Build.VERSION.SDK_INT >= 26) {
             NotificationChannel ch = new NotificationChannel(
-                    CH_ID, "Web TTS", NotificationManager.IMPORTANCE_LOW);
+                    CH_ID, "Sub TTS", NotificationManager.IMPORTANCE_LOW);
             nm.createNotificationChannel(ch);
         }
         Intent open = new Intent(this, MainActivity.class);
@@ -319,7 +319,7 @@ public class TtsPlaybackService extends Service
         PendingIntent tgPi = PendingIntent.getService(this, 2, tgI, flags);
 
         Notification n = new NotificationCompat.Builder(this, CH_ID)
-                .setContentTitle("Web TTS dang chay nen")
+                .setContentTitle("Sub TTS dang chay nen")
                 .setContentText(notifText())
                 .setSmallIcon(android.R.drawable.ic_btn_speak_now)
                 .setContentIntent(pi)
@@ -366,7 +366,7 @@ public class TtsPlaybackService extends Service
             if (Build.VERSION.SDK_INT >= 23) flags |= PendingIntent.FLAG_IMMUTABLE;
             PendingIntent pi = PendingIntent.getActivity(this, 0, open, flags);
             Notification n = new NotificationCompat.Builder(this, CH_ID)
-                    .setContentTitle("Web TTS dang chay nen")
+                    .setContentTitle("Sub TTS dang chay nen")
                     .setContentText(notifText())
                     .setSmallIcon(android.R.drawable.ic_btn_speak_now)
                     .setContentIntent(pi)

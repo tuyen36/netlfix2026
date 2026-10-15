@@ -1,4 +1,4 @@
-# Netflix TTS — ban rieng chay song song app Netflix goc
+# Sub TTS — ban rieng chay song song app Netflix goc
 
 Bo WebView + offset. UI hien dai: the cau dang doc + nut Play to.
 

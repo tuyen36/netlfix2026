@@ -33,7 +33,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Netflix TTS — ban rieng chay song song app Netflix goc.
+ * Sub TTS — ban rieng chay song song app Netflix goc.
  * Bo WebView + offset (khong can: xem app goc, can bang nut noi +-1s).
  * Giu nguyen: sub thu cong, 2 giong Google/HoaiMy, nut noi 30%,
  * xoa cache, toc do, volume sub.
