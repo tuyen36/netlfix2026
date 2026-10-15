@@ -21,6 +21,7 @@ import androidx.core.app.ActivityCompat;
 
 import android.widget.CheckBox;
 import android.widget.LinearLayout;
+import android.widget.ListView;
 import android.widget.ScrollView;
 
 import java.io.InputStream;
@@ -335,9 +336,19 @@ public class MainActivity extends AppCompatActivity {
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(8, 0, 8, 0);
         final android.widget.EditText etQ = dialogEdit("Ten phim (vd: Inside Out 2)", "");
-        root.addView(dialogRow("Ten phim", etQ));
+        etQ.setLayoutParams(new LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
         final CheckBox cbTv = new CheckBox(this);
         cbTv.setText("Phim bo (can nhap tap)");
+        final Button btnViEn = new Button(this);
+        btnViEn.setText("VI→EN");
+        btnViEn.setTextSize(12);
+        btnViEn.setOnClickListener(v -> openTmdbResolve(etQ, cbTv.isChecked()));
+        LinearLayout qRow = new LinearLayout(this);
+        qRow.setOrientation(LinearLayout.HORIZONTAL);
+        qRow.addView(etQ);
+        qRow.addView(btnViEn);
+        root.addView(dialogRow("Ten phim (tieng Anh tim sub chuan nhat)", qRow));
         root.addView(cbTv);
         LinearLayout seRow = new LinearLayout(this);
         seRow.setOrientation(LinearLayout.HORIZONTAL);
@@ -385,6 +396,89 @@ public class MainActivity extends AppCompatActivity {
                 })
                 .setNegativeButton("Huy", null)
                 .show();
+    }
+
+    /**
+     * Doi ten phim tieng Viet sang ten tieng Anh (TMDB) roi dien vao o tim sub.
+     * target: o nhap ten phim cua dialog tim sub. isTv: trang thai tick Phim bo.
+     */
+    private void openTmdbResolve(final android.widget.EditText target,
+                                 final boolean isTv) {
+        String start = target.getText().toString().trim();
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(8, 0, 8, 0);
+        final android.widget.EditText etVi = dialogEdit(
+                "Ten tieng Viet tren Netflix", start);
+        root.addView(dialogRow("Ten tieng Viet", etVi));
+        final ListView lv = new ListView(this);
+        final TmdbMovieAdapter ad = new TmdbMovieAdapter(this,
+                new ArrayList<TmdbResolver.Movie>());
+        lv.setAdapter(ad);
+        LinearLayout.LayoutParams lpp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, 700);
+        lv.setLayoutParams(lpp);
+        root.addView(dialogRow("Cham 1 phim de dien ten Anh", lv));
+        ScrollView sv = new ScrollView(this);
+        sv.addView(root);
+        final AlertDialog dlg = new AlertDialog.Builder(this)
+                .setTitle("Doi ten Viet → Anh (TMDB)")
+                .setView(sv)
+                .setPositiveButton("Tim", null)
+                .setNegativeButton("Huy", null)
+                .create();
+        lv.setOnItemClickListener((parent, view, pos, id) -> {
+            final TmdbResolver.Movie m = ad.getItem(pos);
+            if (m == null) return;
+            toast("Dang lay ten tieng Anh...");
+            TmdbResolver.englishTitle(this, m,
+                    new TmdbResolver.TitleCb() {
+                        @Override public void onOk(String en) {
+                            target.setText(en);
+                            toast("Da dien ten Anh: " + en + " — bam Tim sub.");
+                            if (dlg.isShowing()) dlg.dismiss();
+                        }
+                        @Override public void onError(String msg) {
+                            toast(msg);
+                        }
+                    });
+        });
+        dlg.show();
+        dlg.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String q = etVi.getText().toString().trim();
+            if (q.isEmpty()) {
+                toast("Go ten tieng Viet truoc.");
+                return;
+            }
+            toast("Dang hoi TMDB...");
+            TmdbResolver.search(this, q, isTv ? "tv" : "movie",
+                    new TmdbResolver.Cb() {
+                        @Override public void onOk(List<TmdbResolver.Movie> ms) {
+                            ad.clear();
+                            ad.addAll(ms);
+                            ad.notifyDataSetChanged();
+                            toast("Cham 1 phim de dien ten Anh.");
+                        }
+                        @Override public void onError(String msg) {
+                            toast(msg);
+                        }
+                    });
+        });
+        // Tu tim ngay voi ten dang co san (neu co).
+        if (!start.isEmpty()) {
+            TmdbResolver.search(this, start, isTv ? "tv" : "movie",
+                    new TmdbResolver.Cb() {
+                        @Override public void onOk(List<TmdbResolver.Movie> ms) {
+                            if (!dlg.isShowing()) return;
+                            ad.clear();
+                            ad.addAll(ms);
+                            ad.notifyDataSetChanged();
+                        }
+                        @Override public void onError(String msg) {
+                            if (dlg.isShowing()) toast(msg);
+                        }
+                    });
+        }
     }
 
     private void runSubSearch(final String q, final boolean isTv,
@@ -448,11 +542,14 @@ public class MainActivity extends AppCompatActivity {
                 SubSearchManager.str(this, SubSearchManager.K_OS_PASS));
         etPass.setInputType(android.text.InputType.TYPE_CLASS_TEXT
                 | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        final android.widget.EditText etTmdb = dialogEdit("TMDB key (doi ten Viet-Anh)",
+                SubSearchManager.str(this, SubSearchManager.K_TMDB));
         root.addView(dialogRow("SubDL key", etDl));
         root.addView(dialogRow("SubSource key", etSs));
         root.addView(dialogRow("OpenSubtitles key", etOs));
         root.addView(dialogRow("OpenSubtitles user", etUser));
         root.addView(dialogRow("OpenSubtitles pass", etPass));
+        root.addView(dialogRow("TMDB key (themoviedb.org → Settings → API)", etTmdb));
         final CheckBox cbDl = new CheckBox(this);
         cbDl.setText("Bat SubDL");
         cbDl.setChecked(SubSearchManager.enabled(
@@ -480,6 +577,7 @@ public class MainActivity extends AppCompatActivity {
                             etOs.getText().toString(),
                             etUser.getText().toString(),
                             etPass.getText().toString(),
+                            etTmdb.getText().toString(),
                             cbDl.isChecked(), cbOs.isChecked(), cbSs.isChecked());
                     toast("Da luu key sub online.");
                 })

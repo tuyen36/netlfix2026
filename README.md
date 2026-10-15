@@ -29,6 +29,10 @@ Bo WebView + offset. UI hien dai: the cau dang doc + nut Play to.
    ban** khop phim Netflix dang xem → app tu tai, bung zip, nap sub.
    Ket qua SubSource/OpenSubtitles co **anh bia phim**, SubDL hien chu.
    Moi dong hien **ten phim • nam • loai** (Phim le/bo) + ten ban release.
+4. Ten phim Netflix hien tieng Viet: bam **VI→EN** canh o ten phim →
+   go ten Viet → chon phim (co poster + ten Anh + nam) → app tu dien
+   ten tieng Anh vao o tim sub. Can key TMDB mien phi
+   (`themoviedb.org` → Settings → API), nhap trong **Key sub**.
 
 ## Giong doc
 

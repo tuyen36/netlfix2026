@@ -26,6 +26,7 @@ public final class SubSearchManager {
     public static final String K_OS = "os_key";
     public static final String K_OS_USER = "os_user";
     public static final String K_OS_PASS = "os_pass";
+    public static final String K_TMDB = "tmdb_key";
     public static final String K_EN_SUBDL = "prov_subdl";
     public static final String K_EN_OS = "prov_os";
     public static final String K_EN_SUBSOURCE = "prov_subsource";
@@ -64,6 +65,7 @@ public final class SubSearchManager {
 
     public static void saveKeys(Context ctx, String subdl, String subsource,
                                 String osKey, String osUser, String osPass,
+                                String tmdb,
                                 boolean enDl, boolean enOs, boolean enSs) {
         sp(ctx).edit()
                 .putString(K_SUBDL, subdl.trim())
@@ -71,6 +73,7 @@ public final class SubSearchManager {
                 .putString(K_OS, osKey.trim())
                 .putString(K_OS_USER, osUser.trim())
                 .putString(K_OS_PASS, osPass)
+                .putString(K_TMDB, tmdb.trim())
                 .putBoolean(K_EN_SUBDL, enDl)
                 .putBoolean(K_EN_OS, enOs)
                 .putBoolean(K_EN_SUBSOURCE, enSs)
