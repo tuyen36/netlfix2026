@@ -29,8 +29,10 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.regex.Matcher;
@@ -62,7 +64,6 @@ public class MainActivity extends AppCompatActivity {
     private TextView tvTtsVol;
     private TextView tvVoiceBadge;
     private Button btnPlayPause;
-    private Button btnSaveSub;
     private Button btnFloat;
     private Button btnPrevCue;
     private Button btnNextCue;
@@ -76,9 +77,13 @@ public class MainActivity extends AppCompatActivity {
     private Button btnExit;
     private Button btnTabWatch;
     private Button btnTabSearch;
+    private Button btnTabSaved;
     private LinearLayout paneWatch;
     private LinearLayout paneSearch;
     private LinearLayout paneSetup;
+    private LinearLayout paneSaved;
+    private Button btnClearSavedSubs;
+    private LinearLayout llSavedList;
     private Button btnVoiceGoogle;
     private Button btnVoiceHoaiMy;
     private Button btnVoiceNamMinh;
@@ -122,7 +127,8 @@ public class MainActivity extends AppCompatActivity {
         tvTtsVol = findViewById(R.id.tvTtsVol);
         tvVoiceBadge = findViewById(R.id.tvVoiceBadge);
         btnPlayPause = findViewById(R.id.btnPlayPause);
-        btnSaveSub = findViewById(R.id.btnSaveSub);
+        btnClearSavedSubs = findViewById(R.id.btnClearSavedSubs);
+        llSavedList = findViewById(R.id.llSavedList);
         btnFloat = findViewById(R.id.btnFloat);
         btnPrevCue = findViewById(R.id.btnPrevCue);
         btnNextCue = findViewById(R.id.btnNextCue);
@@ -145,8 +151,10 @@ public class MainActivity extends AppCompatActivity {
         tvCueSize = findViewById(R.id.tvCueSize);
         btnTabWatch = findViewById(R.id.btnTabWatch);
         btnTabSearch = findViewById(R.id.btnTabSearch);
+        btnTabSaved = findViewById(R.id.btnTabSaved);
         paneWatch = findViewById(R.id.paneWatch);
         paneSearch = findViewById(R.id.paneSearch);
+        paneSaved = findViewById(R.id.paneSaved);
         paneSetup = findViewById(R.id.paneSetup);
 
         SharedPreferences sp =
@@ -201,7 +209,6 @@ public class MainActivity extends AppCompatActivity {
 
         findViewById(R.id.btnPickSrt).setOnClickListener(v -> pickSrt());
         btnPlayPause.setOnClickListener(v -> setPlaying(!playing));
-        btnSaveSub.setOnClickListener(v -> saveSubToPhone());
         btnFloat.setOnClickListener(v -> ensureFloat());
         btnPrevCue.setOnClickListener(v -> jumpCueUi(-1));
         btnNextCue.setOnClickListener(v -> jumpCueUi(1));
@@ -214,6 +221,8 @@ public class MainActivity extends AppCompatActivity {
         btnSleep.setOnClickListener(v -> sleepDialog());
         btnTabWatch.setOnClickListener(v -> showPane(0));
         btnTabSearch.setOnClickListener(v -> showPane(1));
+        btnTabSaved.setOnClickListener(v -> showPane(2));
+        btnClearSavedSubs.setOnClickListener(v -> clearAllSaved());
         btnExit.setOnClickListener(v -> exitAppUi());
         btnVoiceGoogle.setOnClickListener(v -> setVoice(
                 TtsPlaybackService.VOICE_GOOGLE));
@@ -463,6 +472,8 @@ public class MainActivity extends AppCompatActivity {
             TtsPlaybackService.setTotalLen(0);
             if (etTotalLen != null) etTotalLen.setText("");
         }
+        // Tu luu file sub de lan sau tu nap (khong can bam nut).
+        autoSaveSub();
         syncUi();
         // Hoi xem tiep neu lan truoc dung giua chung.
         float savedP = rspf.getFloat("fpos_" + filmId, -1);
@@ -988,44 +999,6 @@ public class MainActivity extends AppCompatActivity {
         return s;
     }
 
-    /**
-     * Luu sub dang doc thanh file .srt trong bo nho rieng cua app
-     * (khong can xin quyen) de lan sau tu nap + xem tiep.
-     */
-    private void saveSubToPhone() {
-        if (subs.isEmpty()) {
-            toast("Chua co sub de luu — nap sub truoc.");
-            return;
-        }
-        try {
-            StringBuilder sb = new StringBuilder();
-            int no = 1;
-            for (SubtitleCue c : subs) {
-                sb.append(no++).append('\n');
-                sb.append(fmtSrt(c.start)).append(" --> ")
-                        .append(fmtSrt(c.end)).append('\n');
-                sb.append(c.text).append("\n\n");
-            }
-            File dir = new File(getFilesDir(), "subs");
-            if (!dir.exists()) dir.mkdirs();
-            String base = safeFileName(
-                    filmName == null || filmName.isEmpty() ? "phim" : filmName);
-            File out = new File(dir, base + ".srt");
-            java.io.OutputStream os = new java.io.FileOutputStream(out);
-            os.write(sb.toString().getBytes("UTF-8"));
-            os.close();
-            if (filmId == null || filmId.isEmpty()) {
-                filmId = "tay:" + Integer.toHexString(
-                        subs.get(0).text.hashCode());
-            }
-            getSharedPreferences("webtts", MODE_PRIVATE).edit()
-                    .putString("ffile_" + filmId, out.getAbsolutePath()).apply();
-            toast("Da luu sub (" + subs.size() + " cau). Lan sau mo app tu nap.");
-        } catch (Exception e) {
-            toast("Luu that bai: " + e.getMessage());
-        }
-    }
-
     private static String readAllText(File f) throws Exception {
         InputStream in = new FileInputStream(f);
         try {
@@ -1041,6 +1014,216 @@ public class MainActivity extends AppCompatActivity {
         } finally {
             try { in.close(); } catch (Exception ignored) {}
         }
+    }
+
+    /**
+     * Tu luu sub dang doc thanh file .srt trong bo nho rieng (khong can
+     * quyen) de lan sau tu nap + hoi xem tiep. Ghi de theo ten phim.
+     */
+    private void autoSaveSub() {
+        if (subs.isEmpty() || filmId.isEmpty()) return;
+        try {
+            File dir = new File(getFilesDir(), "subs");
+            if (!dir.exists()) dir.mkdirs();
+            String base = safeFileName(
+                    filmName == null || filmName.isEmpty() ? "phim" : filmName);
+            File out = new File(dir, base + ".srt");
+            StringBuilder sb = new StringBuilder();
+            int no = 1;
+            for (SubtitleCue c : subs) {
+                sb.append(no++).append('\n');
+                sb.append(fmtSrt(c.start)).append(" --> ")
+                        .append(fmtSrt(c.end)).append('\n');
+                sb.append(c.text).append("\n\n");
+            }
+            java.io.OutputStream os = new java.io.FileOutputStream(out);
+            os.write(sb.toString().getBytes("UTF-8"));
+            os.close();
+            getSharedPreferences("webtts", MODE_PRIVATE).edit()
+                    .putString("ffile_" + filmId, out.getAbsolutePath())
+                    .putLong("ftime_" + filmId, System.currentTimeMillis())
+                    .putInt("fcues_" + filmId, subs.size())
+                    .apply();
+        } catch (Exception ignored) {}
+    }
+
+    private static class SavedItem {
+        String id = "";
+        String name = "phim";
+        String path = "";
+        int cues = 0;
+        long time = 0;
+    }
+
+    /** List sub da luu, moi nhat len truoc. */
+    private List<SavedItem> collectSaved() {
+        List<SavedItem> out = new ArrayList<>();
+        try {
+            SharedPreferences sp =
+                    getSharedPreferences("webtts", MODE_PRIVATE);
+            Map<String, ?> all = sp.getAll();
+            if (all == null) return out;
+            for (String k : all.keySet()) {
+                if (k == null || !k.startsWith("ffile_")) continue;
+                String id = k.substring(6);
+                if (id.isEmpty()) continue;
+                String path = sp.getString(k, "");
+                if (path.isEmpty() || !(new File(path).isFile())) continue;
+                SavedItem it = new SavedItem();
+                it.id = id;
+                it.path = path;
+                it.name = sp.getString("fname_" + id, "phim");
+                it.cues = sp.getInt("fcues_" + id, 0);
+                it.time = sp.getLong("ftime_" + id, 0);
+                out.add(it);
+            }
+            Collections.sort(out, (a, b) -> Long.compare(b.time, a.time));
+        } catch (Exception ignored) {}
+        return out;
+    }
+
+    private void refreshSavedList() {
+        if (llSavedList == null) return;
+        llSavedList.removeAllViews();
+        List<SavedItem> items = collectSaved();
+        if (items.isEmpty()) {
+            TextView t = new TextView(this);
+            t.setText("Chua co sub nao duoc luu. Nap sub la app tu luu.");
+            t.setTextColor(0xFF8B949E);
+            t.setTextSize(13);
+            t.setPadding(4, 12, 4, 12);
+            llSavedList.addView(t);
+            return;
+        }
+        java.text.SimpleDateFormat df =
+                new java.text.SimpleDateFormat("dd/MM HH:mm", Locale.US);
+        for (SavedItem it : items) {
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.VERTICAL);
+            row.setBackgroundColor(0xFF161B22);
+            row.setPadding(14, 12, 14, 12);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT);
+            lp.setMargins(0, 0, 0, 12);
+            row.setLayoutParams(lp);
+            TextView t1 = new TextView(this);
+            t1.setText(it.name);
+            t1.setTextColor(0xFFFFFFFF);
+            t1.setTextSize(15);
+            t1.setTypeface(t1.getTypeface(),
+                    android.graphics.Typeface.BOLD);
+            t1.setMaxLines(2);
+            t1.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            row.addView(t1);
+            TextView t2 = new TextView(this);
+            String meta = it.cues > 0 ? (it.cues + " cau • ") : "";
+            if (it.time > 0) {
+                try {
+                    meta += df.format(new java.util.Date(it.time)) + " • ";
+                } catch (Exception ignored) {}
+            }
+            t2.setText(meta + "cham de nap, giu de xoa");
+            t2.setTextColor(0xFF8B949E);
+            t2.setTextSize(12);
+            row.addView(t2);
+            final SavedItem f = it;
+            row.setOnClickListener(v -> loadSavedSub(f));
+            row.setOnLongClickListener(v -> {
+                confirmDeleteSaved(f);
+                return true;
+            });
+            llSavedList.addView(row);
+        }
+    }
+
+    /** Nap sub da luu (tu hoi xem tiep nhu nap thuong). */
+    private void loadSavedSub(SavedItem it) {
+        try {
+            String body = readAllText(new File(it.path));
+            if (!body.isEmpty() && body.charAt(0) == 0xFEFF) {
+                body = body.substring(1);
+            }
+            List<SubtitleCue> parsed = SubtitleParser.parseSrt(body);
+            if (parsed.isEmpty()) {
+                toast("File sub da luu bi loi.");
+                return;
+            }
+            showPane(0);
+            useLoadedCues(parsed, "Da nap " + it.name + " (da luu).",
+                    it.id, it.name, "");
+        } catch (Exception e) {
+            toast("Khong doc duoc file da luu.");
+        }
+    }
+
+    private void confirmDeleteSaved(final SavedItem it) {
+        new AlertDialog.Builder(this)
+                .setTitle("Xoa sub da luu?")
+                .setMessage(it.name + "\n(Xoa file + diem xem tiep cua phim nay)")
+                .setPositiveButton("Xoa", (d, w) -> {
+                    deleteSavedItem(it.id);
+                    refreshSavedList();
+                })
+                .setNegativeButton("Huy", null)
+                .show();
+    }
+
+    private void deleteSavedItem(String id) {
+        if (id == null || id.isEmpty()) return;
+        try {
+            SharedPreferences sp =
+                    getSharedPreferences("webtts", MODE_PRIVATE);
+            String path = sp.getString("ffile_" + id, "");
+            if (!path.isEmpty()) {
+                try {
+                    new File(path).delete();
+                } catch (Exception ignored) {}
+            }
+            sp.edit().remove("fpos_" + id).remove("ftotal_" + id)
+                    .remove("fname_" + id).remove("ffile_" + id)
+                    .remove("ftime_" + id).remove("fcues_" + id).apply();
+        } catch (Exception ignored) {}
+    }
+
+    private void clearAllSaved() {
+        new AlertDialog.Builder(this)
+                .setTitle("Xoa tat ca sub da luu?")
+                .setMessage("Xoa het file + diem xem tiep. Khong khoi phuc duoc.")
+                .setPositiveButton("Xoa het", (d, w) -> {
+                    try {
+                        File dir = new File(getFilesDir(), "subs");
+                        File[] fs = dir.listFiles();
+                        if (fs != null) {
+                            for (File f : fs) {
+                                try {
+                                    if (f.isFile()) f.delete();
+                                } catch (Exception ignored) {}
+                            }
+                        }
+                        SharedPreferences sp = getSharedPreferences(
+                                "webtts", MODE_PRIVATE);
+                        Map<String, ?> all = sp.getAll();
+                        SharedPreferences.Editor ed = sp.edit();
+                        if (all != null) {
+                            for (String k : all.keySet()) {
+                                if (k != null && (k.startsWith("fpos_")
+                                        || k.startsWith("ftotal_")
+                                        || k.startsWith("fname_")
+                                        || k.startsWith("ffile_")
+                                        || k.startsWith("ftime_")
+                                        || k.startsWith("fcues_"))) {
+                                    ed.remove(k);
+                                }
+                            }
+                        }
+                        ed.apply();
+                    } catch (Exception ignored) {}
+                    refreshSavedList();
+                    toast("Da xoa tat ca sub da luu.");
+                })
+                .setNegativeButton("Huy", null)
+                .show();
     }
 
     private void refreshPlayBtn() {
@@ -1296,17 +1479,22 @@ public class MainActivity extends AppCompatActivity {
                 .show();
     }
 
-    /** Chuyen tab man hinh: 0 = Xem + Cai dat, 1 = Tim sub. */
+    /** Chuyen tab: 0 = Xem (+Cai dat), 1 = Tim sub, 2 = Sub da luu. */
     private void showPane(int i) {
         if (paneWatch == null) return;
-        if (i < 0 || i > 1) i = 0;
+        if (i < 0 || i > 2) i = 0;
         paneWatch.setVisibility(i == 0 ? View.VISIBLE : View.GONE);
         paneSetup.setVisibility(i == 0 ? View.VISIBLE : View.GONE);
         paneSearch.setVisibility(i == 1 ? View.VISIBLE : View.GONE);
+        if (paneSaved != null) {
+            paneSaved.setVisibility(i == 2 ? View.VISIBLE : View.GONE);
+        }
         btnTabWatch.setAlpha(i == 0 ? 1.0f : 0.5f);
         btnTabSearch.setAlpha(i == 1 ? 1.0f : 0.5f);
+        if (btnTabSaved != null) btnTabSaved.setAlpha(i == 2 ? 1.0f : 0.5f);
         getSharedPreferences("webtts", MODE_PRIVATE)
                 .edit().putInt("tab", i).apply();
+        if (i == 2) refreshSavedList();
     }
 
     private void syncUi() {
@@ -1367,6 +1555,7 @@ public class MainActivity extends AppCompatActivity {
         refreshVoiceUi();
         refreshCacheBtn();
         syncUi();
+        refreshSavedList();
     }
 
     @Override

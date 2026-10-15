@@ -57,6 +57,8 @@ Nut noi gon: cau + gio + Play/⏮/⏭ + nut ⋯ mo them.
 - Nut **Luu sub vao may**: ghi sub dang doc thanh `.srt` trong bo nho
   rieng (khong can quyen). Lan sau mo app tu nap + hoi xem tiep.
   Xem het phim tu xoa file + ho so cho khoi day may.
+- Tab **Da luu**: list sub da luu (moi nhat truoc, kem so cau + ngay luu).
+  Cham de nap, giu de xoa 1 file, nut **Xoa tat ca** de don sach.
 - Nut **Hen gio tat**: Tat / 15 / 30 / 60 / 90 phut, het gio tu dung doc
   (pause thi dem tiep khi Play, nap sub moi thi huy hen).
 - Cuoc goi den: he thong tu tat tieng media — nghe xong bam Play tiep

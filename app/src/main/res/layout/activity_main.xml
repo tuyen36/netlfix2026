@@ -75,6 +75,15 @@
                 android:layout_weight="1"
                 android:text="🔍  Tim sub"
                 android:textSize="13sp" />
+
+            <Button
+                android:id="@+id/btnTabSaved"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:text="💾  Da luu"
+                android:textSize="13sp" />
         </LinearLayout>
 
         <!-- TAB Xem: the cau + dieu khien phat -->
@@ -220,15 +229,6 @@
             android:textSize="17sp"
             android:textStyle="bold" />
 
-        <!-- Luu sub vao may de lan sau tu nap + xem tiep -->
-        <Button
-            android:id="@+id/btnSaveSub"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="💾  Luu sub vao may"
-            android:textSize="14sp" />
-
         </LinearLayout>
 
         <!-- TAB Tim sub: chon file + online + sao luu -->
@@ -298,6 +298,30 @@
                 android:textSize="13sp" />
         </LinearLayout>
 
+        </LinearLayout>
+
+        <!-- TAB Sub da luu -->
+        <LinearLayout
+            android:id="@+id/paneSaved"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <Button
+                android:id="@+id/btnClearSavedSubs"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="🗑  Xoa tat ca sub da luu"
+                android:textSize="13sp" />
+
+            <LinearLayout
+                android:id="@+id/llSavedList"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:orientation="vertical" />
         </LinearLayout>
 
         <!-- TAB Cai dat: hen gio + giong + toc do + volume + nut noi + thoat -->
