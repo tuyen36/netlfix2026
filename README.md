@@ -44,7 +44,16 @@ Bo WebView + offset. UI hien dai: the cau dang doc + nut Play to.
 
 - **Google (offline)**: khong can mang.
 - **HoaiMy (online)**: can mang, preload 35 cau, cache mp3.
+- **NamMinh (online)**: giong nam, cung cach HoaiMy (doi tren nut noi
+  theo vong Google → HoaiMy → NamMinh).
   Nut **Xoa cache (N MB)** de don.
+
+## Nho phim + hen gio + tu dung khi co cuoc goi
+
+- Moi phim (theo ten file sub) tu nho **tong gio + vi tri dung**: nap lai
+  sub cu → app hoi **xem tiep tu mm:ss** (tong gio khoi phai nhap lai).
+- Nut **Hen gio tat**: Tat / 15 / 30 / 60 / 90 phut, het gio tu dung doc.
+- Co cuoc goi (mat audio-focus): tu tam dung, nghe xong tu doc tiep.
 
 ## Build
 

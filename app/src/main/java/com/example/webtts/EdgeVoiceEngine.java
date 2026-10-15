@@ -38,6 +38,9 @@ public class EdgeVoiceEngine {
     }
 
     public static final String VOICE = EdgeProtocol.VOICE_HOAIMY;
+    public static final String VOICE_NAMMINH = EdgeProtocol.VOICE_NAMMINH;
+    /** Giong Edge dang dung (HoaiMy mac dinh, them NamMinh v1.11). */
+    private volatile String engineVoice = EdgeProtocol.VOICE_HOAIMY;
     /** Preload 35 cau nhu PRELOAD_COUNT Python. */
     public static final int PRELOAD_COUNT = 35;
     /** Tran nhu MAX_SPEED Python. */
@@ -150,9 +153,25 @@ public class EdgeVoiceEngine {
         return removed;
     }
 
-    private static String key(int index, String text) {
+    /**
+     * Doi giong Edge (HoaiMy/NamMinh): xoa map tam (file mp3 giu lai,
+     * key co ten giong nen khong lan), dung doc cau cu.
+     */
+    public void setEngineVoice(String name) {
+        if (name == null || name.isEmpty() || name.equals(engineVoice)) return;
+        engineVoice = name;
+        generation.incrementAndGet();
+        readyPath.clear();
+        rawDur.clear();
+        queued.clear();
+        lastError = null;
+        stopPlayer();
+        currentIndex = -1;
+    }
+
+    private String key(int index, String text) {
         try {
-            String raw = VOICE + "|" + index + "|" + text;
+            String raw = engineVoice + "|" + index + "|" + text;
             MessageDigest md = MessageDigest.getInstance("SHA-1");
             byte[] h = md.digest(raw.getBytes("UTF-8"));
             StringBuilder sb = new StringBuilder();
@@ -213,7 +232,7 @@ public class EdgeVoiceEngine {
             }
             // Async: KHONG remove queued o day (bug cu remove ngay nen
             // preload goi lai gay tai trung). Chi remove trong callback.
-            EdgeTtsClient.synthesize(cue.text, VOICE, "+0%", new EdgeTtsClient.Callback() {
+            EdgeTtsClient.synthesize(cue.text, engineVoice, "+0%", new EdgeTtsClient.Callback() {
                 @Override public void onAudio(byte[] mp3) {
                     try {
                         if (gen != generation.get()) return;

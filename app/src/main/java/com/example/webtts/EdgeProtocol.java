@@ -32,6 +32,7 @@ public class EdgeProtocol {
             "2-" + CHROMIUM_FULL_VERSION;
 
     public static final String VOICE_HOAIMY = "vi-VN-HoaiMyNeural";
+    public static final String VOICE_NAMMINH = "vi-VN-NamMinhNeural";
 
     private static final double WIN_EPOCH = 11644473600.0;
     private static final long MASK = 0xFFFFFFFFL;

@@ -84,6 +84,8 @@ public class TtsPlaybackService extends Service
         playBase = 0;
         playStartElapsed = android.os.SystemClock.elapsedRealtime();
         lastCueText = "...";
+        sleepAtElapsed = 0;
+        pausedByFocus = false;
         if (speaker != null) speaker.resetIndex();
         if (edge != null) edge.stopPlayer();
         refreshFloatTime();
@@ -106,11 +108,17 @@ public class TtsPlaybackService extends Service
     private SubtitleSpeaker speaker;
     private boolean ttsReady = false;
 
-    /** 0 = Google offline, 1 = HoaiMy Edge online. */
+    /** 0 = Google offline, 1 = HoaiMy Edge online, 2 = NamMinh Edge online. */
     public static final int VOICE_GOOGLE = 0;
     public static final int VOICE_HOAIMY = 1;
+    public static final int VOICE_NAMMINH = 2;
     private int voice = VOICE_GOOGLE;
     private EdgeVoiceEngine edge;
+
+    /** true = 1 trong 2 giong Edge online. */
+    private static boolean isEdgeVoice(int v) {
+        return v == VOICE_HOAIMY || v == VOICE_NAMMINH;
+    }
 
     private boolean playing = false;
     private double position = 0;
@@ -130,6 +138,53 @@ public class TtsPlaybackService extends Service
     private boolean splitAudio = true;
     private String lastCueText = "...";
 
+    /** Ho so phim dang doc de luu/tiep tuc vi tri (setFilm tu Activity). */
+    private String filmId = "";
+    private String filmName = "";
+    /** Hen gio tat doc: moc elapsedRealtime, 0 = tat. */
+    private long sleepAtElapsed = 0;
+    /** true = vua bi mat audio-focus (vd cuoc goi) nen tam dung. */
+    private boolean pausedByFocus = false;
+    private android.media.AudioManager audioMgr;
+    private final android.media.AudioManager.OnAudioFocusChangeListener focusListener =
+            new android.media.AudioManager.OnAudioFocusChangeListener() {
+                @Override public void onAudioFocusChange(int change) {
+                    if (change == android.media.AudioManager.AUDIOFOCUS_LOSS
+                            || change == android.media.AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) {
+                        // Cuoc goi den / app khac chiem loa: tam dung, co lai thi doc tiep.
+                        if (playing) {
+                            pausedByFocus = true;
+                            setPlaying(false);
+                        }
+                    } else if (change == android.media.AudioManager.AUDIOFOCUS_GAIN) {
+                        if (pausedByFocus) {
+                            pausedByFocus = false;
+                            if (!sharedSubs.isEmpty()) setPlaying(true);
+                        }
+                    }
+                }
+            };
+
+    private void requestFocus() {
+        try {
+            if (audioMgr == null) {
+                audioMgr = (android.media.AudioManager)
+                        getSystemService(AUDIO_SERVICE);
+            }
+            if (audioMgr != null) {
+                audioMgr.requestAudioFocus(focusListener,
+                        android.media.AudioManager.STREAM_MUSIC,
+                        android.media.AudioManager.AUDIOFOCUS_GAIN);
+            }
+        } catch (Exception ignored) {}
+    }
+
+    private void abandonFocus() {
+        try {
+            if (audioMgr != null) audioMgr.abandonAudioFocus(focusListener);
+        } catch (Exception ignored) {}
+    }
+
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Runnable ticker = new Runnable() {
         @Override public void run() {
@@ -142,6 +197,17 @@ public class TtsPlaybackService extends Service
                     position = duration;
                     setPlaying(false);
                 }
+                // Hen gio tat doc.
+                if (playing && sleepAtElapsed > 0
+                        && android.os.SystemClock.elapsedRealtime() >= sleepAtElapsed) {
+                    sleepAtElapsed = 0;
+                    setPlaying(false);
+                    try {
+                        android.widget.Toast.makeText(this,
+                                "Het gio hen — da dung doc.",
+                                android.widget.Toast.LENGTH_SHORT).show();
+                    } catch (Exception ignored) {}
+                }
                 driveEngines();
                 updateNotif();
             }
@@ -150,9 +216,9 @@ public class TtsPlaybackService extends Service
         }
     };
 
-    /** Day position cho engine dang chon (Google hoac HoaiMy). */
+    /** Day position cho engine dang chon (Google hoac HoaiMy/NamMinh). */
     private void driveEngines() {
-        if (voice == VOICE_HOAIMY && edge != null) {
+        if (isEdgeVoice(voice) && edge != null) {
             int idx = SubtitleParser.findIndex(sharedSubs, position + offset);
             if (idx >= 0) {
                 SubtitleCue cue = sharedSubs.get(idx);
@@ -218,6 +284,10 @@ public class TtsPlaybackService extends Service
         edge.setSubtitles(sharedSubs);
         edge.setBaseRate(rate);
         edge.setTtsVolume(ttsVol);
+        // Service khoi dong lai (vd sau reboot): dong bo giong Edge theo prefs.
+        edge.setEngineVoice(voice == VOICE_NAMMINH
+                ? EdgeVoiceEngine.VOICE_NAMMINH
+                : EdgeProtocol.VOICE_HOAIMY);
         handler.post(ticker);
     }
 
@@ -229,6 +299,8 @@ public class TtsPlaybackService extends Service
         splitAudio = sp.getBoolean("splitAudio", true);
         voice = sp.getInt("voice", VOICE_GOOGLE);
         totalLen = sp.getFloat("totalLen", 0f);
+        filmId = sp.getString("curfilm_id", "");
+        filmName = sp.getString("curfilm_name", "phim");
     }
 
     @Override
@@ -336,7 +408,8 @@ public class TtsPlaybackService extends Service
     }
 
     private String notifText() {
-        String v = voice == VOICE_HOAIMY ? "HoaiMy" : "Google";
+        String v = voice == VOICE_HOAIMY ? "HoaiMy"
+                : (voice == VOICE_NAMMINH ? "NamMinh" : "Google");
         if (sharedCount > 0) {
             String base = (playing ? "Dang doc" : "Tam dung") + " "
                     + sharedCount + " cau (" + v + ")";
@@ -425,6 +498,13 @@ public class TtsPlaybackService extends Service
             position = clockNow();
         }
         playing = p;
+        if (p) {
+            pausedByFocus = false;
+            requestFocus();
+        } else {
+            abandonFocus();
+            saveFilmNow();
+        }
         if (speaker != null) speaker.setPlaying(p);
         if (edge != null) edge.setPlaying(p);
         if (!p) {
@@ -433,11 +513,11 @@ public class TtsPlaybackService extends Service
             }
             if (edge != null) edge.stopPlayer();
         } else {
-            // Bam Play: cat cau cu + preload ngay 35 cau HoaiMy.
+            // Bam Play: cat cau cu + preload ngay 35 cau HoaiMy/NamMinh.
             if (speaker != null) speaker.resetIndex();
             if (edge != null) edge.stopPlayer();
             driveEngines();
-            if (voice == VOICE_HOAIMY && edge != null) {
+            if (isEdgeVoice(voice) && edge != null) {
                 int idx = SubtitleParser.findIndex(sharedSubs, position + offset);
                 if (idx < 0) idx = 0;
                 edge.preloadFrom(idx);
@@ -467,7 +547,7 @@ public class TtsPlaybackService extends Service
         if (position < 0) position = 0;
         if (duration > 0 && position > duration) position = duration;
         if (playing) syncClock();
-        if (voice == VOICE_HOAIMY && edge != null) {
+        if (isEdgeVoice(voice) && edge != null) {
             edge.stopPlayer();
             int idx = SubtitleParser.findIndex(sharedSubs, position + offset);
             if (idx >= 0) edge.preloadFrom(idx);
@@ -569,19 +649,24 @@ public class TtsPlaybackService extends Service
         return running != null ? running.ttsVol : 100;
     }
 
-    /** 0 = Google offline, 1 = HoaiMy Edge online. */
+    /** 0 = Google offline, 1 = HoaiMy Edge online, 2 = NamMinh Edge online. */
     public static void setVoice(int v) {
         if (running != null) {
             boolean changed = running.voice != v;
             running.voice = v;
             if (changed) {
+                if (running.edge != null) {
+                    running.edge.setEngineVoice(v == VOICE_NAMMINH
+                            ? EdgeVoiceEngine.VOICE_NAMMINH
+                            : EdgeProtocol.VOICE_HOAIMY);
+                }
                 // Doi giong: dung engine cu, preload lai engine moi.
                 if (running.speaker != null) running.speaker.stop();
                 if (running.tts != null) {
                     try { running.tts.stop(); } catch (Exception ignored) {}
                 }
                 if (running.edge != null) running.edge.stopPlayer();
-                if (v == VOICE_HOAIMY && running.edge != null
+                if (isEdgeVoice(v) && running.edge != null
                         && running.playing) {
                     int idx = SubtitleParser.findIndex(sharedSubs,
                             running.position + running.offset);
@@ -599,7 +684,9 @@ public class TtsPlaybackService extends Service
     }
 
     public static String voiceName() {
-        return getVoice() == VOICE_HOAIMY ? "HoaiMy (online)" : "Google (offline)";
+        if (getVoice() == VOICE_HOAIMY) return "HoaiMy (online)";
+        if (getVoice() == VOICE_NAMMINH) return "NamMinh (online)";
+        return "Google (offline)";
     }
 
     /** So cau HoaiMy da tai xong de hien tien do preload. */
@@ -691,6 +778,71 @@ public class TtsPlaybackService extends Service
             pos = running.duration;
         }
         setPosition(pos);
+    }
+
+    /**
+     * Dat phim dang doc (Activity goi ngay sau setSharedSubtitles).
+     * id ben vung theo file/sub ("uri:<hash>" hoac "online:<hash>").
+     */
+    public static void setFilm(String id, String name) {
+        if (running != null) {
+            running.filmId = id == null ? "" : id;
+            running.filmName = name == null ? "" : name;
+        }
+    }
+
+    /** Luu vi tri + tong phim hien tai (goi khi pause/seek/thoat). */
+    public static void saveFilmNow() {
+        TtsPlaybackService r = running;
+        if (r == null || r.filmId.isEmpty()) return;
+        try {
+            double pos = r.playing ? r.clockNow() : r.position;
+            r.getSharedPreferences("webtts", MODE_PRIVATE).edit()
+                    .putFloat("fpos_" + r.filmId, (float) pos)
+                    .putFloat("ftotal_" + r.filmId, (float) r.totalLen)
+                    .putString("fname_" + r.filmId, r.filmName)
+                    .apply();
+        } catch (Exception ignored) {}
+    }
+
+    /** Vi tri da luu cua phim (-1 = chua co). */
+    public static float savedPos(String id) {
+        if (running == null || id == null || id.isEmpty()) return -1;
+        try {
+            return running.getSharedPreferences("webtts", MODE_PRIVATE)
+                    .getFloat("fpos_" + id, -1);
+        } catch (Exception e) {
+            return -1;
+        }
+    }
+
+    /** Tong phim da luu (0 = chua co). */
+    public static float savedTotal(String id) {
+        if (running == null || id == null || id.isEmpty()) return 0;
+        try {
+            return running.getSharedPreferences("webtts", MODE_PRIVATE)
+                    .getFloat("ftotal_" + id, 0);
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    /** Hen gio tat doc (phut, 0 = tat). */
+    public static void setSleepMinutes(int m) {
+        if (running != null) {
+            if (m <= 0) running.sleepAtElapsed = 0;
+            else running.sleepAtElapsed =
+                    android.os.SystemClock.elapsedRealtime() + m * 60L * 1000L;
+            running.updateNotif();
+        }
+    }
+
+    /** So giay con lai cua hen gio (0 = tat/het). */
+    public static int getSleepLeftSec() {
+        if (running == null || running.sleepAtElapsed <= 0) return 0;
+        long left = (running.sleepAtElapsed
+                - android.os.SystemClock.elapsedRealtime()) / 1000;
+        return left < 0 ? 0 : (int) left;
     }
 
     /**
@@ -974,7 +1126,8 @@ public class TtsPlaybackService extends Service
         floatVoiceBtn.setTextSize(12);
         refreshFloatVoiceBtn();
         floatVoiceBtn.setOnClickListener(v -> {
-            int nv = (voice == VOICE_GOOGLE) ? VOICE_HOAIMY : VOICE_GOOGLE;
+            int nv = (voice == VOICE_GOOGLE) ? VOICE_HOAIMY
+                    : (voice == VOICE_HOAIMY ? VOICE_NAMMINH : VOICE_GOOGLE);
             setVoice(nv);
             getSharedPreferences("webtts", MODE_PRIVATE)
                     .edit().putInt("voice", nv).apply();
@@ -1060,7 +1213,8 @@ public class TtsPlaybackService extends Service
         if (floatVoiceBtn != null) {
             floatVoiceBtn.setText(voice == VOICE_HOAIMY
                     ? "Giong: HoaiMy (online)"
-                    : "Giong: Google (offline)");
+                    : (voice == VOICE_NAMMINH ? "Giong: NamMinh (online)"
+                    : "Giong: Google (offline)"));
         }
     }
 
@@ -1068,6 +1222,7 @@ public class TtsPlaybackService extends Service
     public void onDestroy() {
         handler.removeCallbacks(ticker);
         hideFloat();
+        abandonFocus();
         try {
             if (tts != null) {
                 tts.stop();

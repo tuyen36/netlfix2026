@@ -68,9 +68,11 @@ public class MainActivity extends AppCompatActivity {
     private Button btnSubSettings;
     private Button btnBackup;
     private Button btnRestore;
+    private Button btnSleep;
     private Button btnExit;
     private Button btnVoiceGoogle;
     private Button btnVoiceHoaiMy;
+    private Button btnVoiceNamMinh;
     private Button btnClearCache;
     private int voice = TtsPlaybackService.VOICE_GOOGLE;
     private SeekBar seekPos;
@@ -82,6 +84,10 @@ public class MainActivity extends AppCompatActivity {
     private boolean playing = false;
     private double position = 0;
     private double duration = 0;
+    /** Ten hien thi + id + uri phim dang doc (de luu/tiep tuc). */
+    private String filmId = "";
+    private String filmName = "phim";
+    private String filmUri = "";
     /** Tong thoi luong phim (giay) do user nhap theo Netflix. */
     private double totalLen = 0;
     private float rate = 1.0f;
@@ -112,9 +118,11 @@ public class MainActivity extends AppCompatActivity {
         btnSubSettings = findViewById(R.id.btnSubSettings);
         btnBackup = findViewById(R.id.btnBackup);
         btnRestore = findViewById(R.id.btnRestore);
+        btnSleep = findViewById(R.id.btnSleep);
         btnExit = findViewById(R.id.btnExit);
         btnVoiceGoogle = findViewById(R.id.btnVoiceGoogle);
         btnVoiceHoaiMy = findViewById(R.id.btnVoiceHoaiMy);
+        btnVoiceNamMinh = findViewById(R.id.btnVoiceNamMinh);
         btnClearCache = findViewById(R.id.btnClearCache);
         seekPos = findViewById(R.id.seekPos);
         seekRate = findViewById(R.id.seekRate);
@@ -147,11 +155,14 @@ public class MainActivity extends AppCompatActivity {
         btnSubSettings.setOnClickListener(v -> openSubSettings());
         btnBackup.setOnClickListener(v -> startBackup());
         btnRestore.setOnClickListener(v -> startRestore());
+        btnSleep.setOnClickListener(v -> sleepDialog());
         btnExit.setOnClickListener(v -> exitAppUi());
         btnVoiceGoogle.setOnClickListener(v -> setVoice(
                 TtsPlaybackService.VOICE_GOOGLE));
         btnVoiceHoaiMy.setOnClickListener(v -> setVoice(
                 TtsPlaybackService.VOICE_HOAIMY));
+        btnVoiceNamMinh.setOnClickListener(v -> setVoice(
+                TtsPlaybackService.VOICE_NAMMINH));
         btnClearCache.setOnClickListener(v -> clearCacheUi());
 
         seekPos.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -214,19 +225,22 @@ public class MainActivity extends AppCompatActivity {
                     }
                     tvTime.setText(TtsPlaybackService.timeText());
                     tvRemain.setText(TtsPlaybackService.remainingText());
+                    refreshSleepBtn();
                     double sp2 = TtsPlaybackService.getPosition();
                     if (duration > 0 && Math.abs(sp2 - position) > 0.6) {
                         position = sp2;
                         syncUi();
                     }
-                    // Hien loi HoaiMy (neu co) de user biet tai sao im lang.
+                    // Hien loi Edge (neu co) de user biet tai sao im lang.
+                    int gv = TtsPlaybackService.getVoice();
                     if (!subs.isEmpty()
-                            && TtsPlaybackService.getVoice()
-                                    == TtsPlaybackService.VOICE_HOAIMY) {
+                            && (gv == TtsPlaybackService.VOICE_HOAIMY
+                            || gv == TtsPlaybackService.VOICE_NAMMINH)) {
                         String err = TtsPlaybackService.edgeError();
                         String prog = TtsPlaybackService.edgeProgress();
                         if (err != null && "0 cau".equals(prog)) {
-                            String s = "HoaiMy loi: " + err;
+                            String s = "Loi (" + TtsPlaybackService.voiceName()
+                                    + "): " + err;
                             if (s.length() > 120) s = s.substring(0, 120);
                             if (!s.equals(tvStatus.getText().toString())) {
                                 tvStatus.setText(s);
@@ -246,11 +260,37 @@ public class MainActivity extends AppCompatActivity {
         i.setType("*/*");
         i.putExtra(Intent.EXTRA_MIME_TYPES,
                 new String[]{"application/x-subrip", "text/plain"});
+        i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
+                | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
         try {
             startActivityForResult(i, REQ_SRT);
         } catch (Exception e) {
             toast("Khong mo duoc chon file: " + e.getMessage());
         }
+    }
+
+    /** Ten file hien thi cua Uri (de nhan dien phim). */
+    private static String displayName(android.content.Context ctx, Uri uri) {
+        android.database.Cursor c = null;
+        try {
+            c = ctx.getContentResolver().query(uri,
+                    new String[]{
+                            android.provider.OpenableColumns.DISPLAY_NAME},
+                    null, null, null);
+            if (c != null && c.moveToFirst()) {
+                String n = c.getString(0);
+                if (n != null && !n.isEmpty()) return n;
+            }
+        } catch (Exception ignored) {
+        } finally {
+            if (c != null) {
+                try { c.close(); } catch (Exception ignored) {}
+            }
+        }
+        String p = uri.getPath();
+        if (p == null || p.isEmpty()) return "phim";
+        int k = p.lastIndexOf('/');
+        return k >= 0 ? p.substring(k + 1) : p;
     }
 
     @Override
@@ -293,33 +333,72 @@ public class MainActivity extends AppCompatActivity {
                 toast("SRT khong co phu de hop le.");
                 return;
             }
-            subs = parsed;
-            duration = 0;
-            for (SubtitleCue c : subs) duration = Math.max(duration, c.end);
-            position = 0;
-            ensureService();
-            TtsPlaybackService.setSharedSubtitles(subs);
-            tvStatus.setText("Da nap " + subs.size() + " cau phu de.");
-            toast("Da nap " + subs.size() + " cau. Bam Play roi sang Netflix.");
-            refreshCacheBtn();
-            syncUi();
+            String fname = displayName(this, uri);
+            try {
+                getContentResolver().takePersistableUriPermission(uri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            } catch (Exception ignored) {}
+            String fid = "uri:"
+                    + Integer.toHexString(uri.toString().hashCode());
+            useLoadedCues(parsed, "Da nap " + parsed.size() + " cau phu de.",
+                    fid, fname, uri.toString());
         } catch (Exception e) {
             toast("Khong doc duoc SRT: " + e.getMessage());
         }
     }
 
     /** Dung chung cho nap .srt tay va sub tai tu online. */
-    private void useLoadedCues(List<SubtitleCue> parsed, String label) {
+    private void useLoadedCues(List<SubtitleCue> parsed, String label,
+                               String fid, String fname, String furi) {
         subs = parsed;
         duration = 0;
         for (SubtitleCue c : subs) duration = Math.max(duration, c.end);
         position = 0;
+        filmId = fid == null ? "" : fid;
+        filmName = (fname == null || fname.isEmpty()) ? "phim" : fname;
+        filmUri = furi == null ? "" : furi;
+        // Ghi ca vao prefs phong khi service chua chay (setFilm se mat).
+        getSharedPreferences("webtts", MODE_PRIVATE).edit()
+                .putString("curfilm_id", filmId)
+                .putString("curfilm_name", filmName)
+                .apply();
         ensureService();
         TtsPlaybackService.setSharedSubtitles(subs);
+        TtsPlaybackService.setFilm(filmId, filmName);
         tvStatus.setText(label);
         toast(label + ". Bam Play roi sang Netflix.");
         refreshCacheBtn();
+        // Ho so phim: khoi phuc tong gio da luu (tranh lan phim khac).
+        float savedT = TtsPlaybackService.savedTotal(filmId);
+        if (savedT > 0) {
+            totalLen = savedT;
+            getSharedPreferences("webtts", MODE_PRIVATE)
+                    .edit().putFloat("totalLen", savedT).apply();
+            TtsPlaybackService.setTotalLen(savedT);
+            if (etTotalLen != null) etTotalLen.setText(fmtHMS(savedT));
+        } else {
+            totalLen = 0;
+            getSharedPreferences("webtts", MODE_PRIVATE)
+                    .edit().putFloat("totalLen", 0).apply();
+            TtsPlaybackService.setTotalLen(0);
+            if (etTotalLen != null) etTotalLen.setText("");
+        }
         syncUi();
+        // Hoi xem tiep neu lan truoc dung giua chung.
+        float savedP = TtsPlaybackService.savedPos(filmId);
+        if (savedP > 10 && duration > 0 && savedP < duration - 5) {
+            final double resumeAt = savedP;
+            new AlertDialog.Builder(this)
+                    .setTitle("Xem tiep " + filmName + "?")
+                    .setMessage("Lan truoc dung o " + fmtMmSs(resumeAt) + ".")
+                    .setPositiveButton("Tiep tuc", (d, w) -> {
+                        TtsPlaybackService.setPosition(resumeAt);
+                        position = TtsPlaybackService.getPosition();
+                        syncUi();
+                    })
+                    .setNegativeButton("Tu dau", null)
+                    .show();
+        }
     }
 
     // ---------- tim + tai sub online (SubDL / OpenSubtitles / SubSource) ----------
@@ -531,7 +610,10 @@ public class MainActivity extends AppCompatActivity {
         SubSearchManager.downloadAndParse(this, r,
                 new SubSearchManager.LoadCb() {
                     @Override public void onOk(List<SubtitleCue> cues, String label) {
-                        useLoadedCues(cues, "Da nap " + label);
+                        String oid = "online:"
+                                + Integer.toHexString(label.hashCode());
+                        useLoadedCues(cues, "Da nap " + label,
+                                oid, label, "");
                     }
                     @Override public void onError(String msg) {
                         tvStatus.setText(shortMsg(msg));
@@ -787,15 +869,20 @@ public class MainActivity extends AppCompatActivity {
         refreshVoiceUi();
         toast(v == TtsPlaybackService.VOICE_HOAIMY
                 ? "Giong HoaiMy (online) — can mang, preload 35 cau."
-                : "Giong Google (offline) — khong can mang.");
+                : (v == TtsPlaybackService.VOICE_NAMMINH
+                ? "Giong NamMinh (online) — can mang, preload 35 cau."
+                : "Giong Google (offline) — khong can mang."));
     }
 
     private void refreshVoiceUi() {
-        boolean hoaimy = voice == TtsPlaybackService.VOICE_HOAIMY;
-        tvVoiceBadge.setText(hoaimy ? "HoaiMy" : "Google");
-        // Nut dang chon hien xanh, nut kia mo.
-        btnVoiceGoogle.setAlpha(hoaimy ? 0.5f : 1.0f);
-        btnVoiceHoaiMy.setAlpha(hoaimy ? 1.0f : 0.5f);
+        boolean g = voice == TtsPlaybackService.VOICE_GOOGLE;
+        boolean h = voice == TtsPlaybackService.VOICE_HOAIMY;
+        boolean n = voice == TtsPlaybackService.VOICE_NAMMINH;
+        tvVoiceBadge.setText(g ? "Google" : (h ? "HoaiMy" : "NamMinh"));
+        // Nut dang chon hien ro, nut kia mo.
+        btnVoiceGoogle.setAlpha(g ? 1.0f : 0.5f);
+        btnVoiceHoaiMy.setAlpha(h ? 1.0f : 0.5f);
+        btnVoiceNamMinh.setAlpha(n ? 1.0f : 0.5f);
     }
 
     /** Thoat han app: dung service chay nen + dong man hinh. */
@@ -933,10 +1020,55 @@ public class MainActivity extends AppCompatActivity {
                 .edit().putFloat("totalLen", (float) v).apply();
         ensureService();
         TtsPlaybackService.setTotalLen(v);
+        TtsPlaybackService.saveFilmNow();
         etTotalLen.setText(fmtHMS(v));
         syncUi();
         toast("Da luu tong " + fmtHMS(v)
                 + ". Gio so gio CON LAI voi Netflix.");
+    }
+
+    /** Chon hen gio tat doc: Tat / 15 / 30 / 60 / 90 phut. */
+    private void sleepDialog() {
+        final String[] items = {"Tat hen gio", "15 phut", "30 phut",
+                "60 phut", "90 phut"};
+        final int[] vals = {0, 15, 30, 60, 90};
+        int leftMin = (TtsPlaybackService.getSleepLeftSec() + 30) / 60;
+        int checked = 0;
+        for (int i = 1; i < vals.length; i++) {
+            if (leftMin >= vals[i] - 7 && leftMin <= vals[i] + 7) checked = i;
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("Hen gio tat doc")
+                .setSingleChoiceItems(items, checked, (d, w) -> {
+                    ensureService();
+                    TtsPlaybackService.setSleepMinutes(vals[w]);
+                    toast(vals[w] == 0 ? "Da tat hen gio."
+                            : "Se dung doc sau " + vals[w] + " phut.");
+                    refreshSleepBtn();
+                    d.dismiss();
+                })
+                .setNegativeButton("Huy", null)
+                .show();
+    }
+
+    private static String fmtSleep(int sec) {
+        int m = (sec + 30) / 60;
+        if (m >= 60) {
+            return (m / 60) + "h"
+                    + String.format(Locale.US, "%02d", m % 60) + "p";
+        }
+        return m + "p";
+    }
+
+    private void refreshSleepBtn() {
+        if (btnSleep == null) return;
+        int left = TtsPlaybackService.getSleepLeftSec();
+        String t = left > 0 ? ("Hen gio tat: " + fmtSleep(left))
+                : "Hen gio tat: Tat";
+        if (!t.equals(btnSleep.getTag())) {
+            btnSleep.setTag(t);
+            btnSleep.setText("⏾  " + t);
+        }
     }
 
     /** Nhap con so dem nguoc tren Netflix -> nhay sub toi dung cho. */
@@ -1000,6 +1132,14 @@ public class MainActivity extends AppCompatActivity {
         if (s == null) return "";
         s = s.trim().replaceAll("\\s+", " ");
         return s.length() > 300 ? s.substring(0, 300) : s;
+    }
+
+    @Override
+    protected void onPause() {
+        try {
+            TtsPlaybackService.saveFilmNow();
+        } catch (Exception ignored) {}
+        super.onPause();
     }
 
     @Override

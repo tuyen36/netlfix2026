@@ -247,6 +247,15 @@
                 android:textSize="13sp" />
         </LinearLayout>
 
+        <!-- Hen gio tat doc -->
+        <Button
+            android:id="@+id/btnSleep"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="⏾  Hen gio tat: Tat"
+            android:textSize="14sp" />
+
         <!-- Giong doc -->
         <TextView
             android:layout_width="wrap_content"
@@ -277,6 +286,15 @@
                 android:layout_marginStart="8dp"
                 android:layout_weight="1"
                 android:text="HoaiMy\n(online)"
+                android:textSize="13sp" />
+
+            <Button
+                android:id="@+id/btnVoiceNamMinh"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:text="NamMinh\n(online)"
                 android:textSize="13sp" />
         </LinearLayout>
 
