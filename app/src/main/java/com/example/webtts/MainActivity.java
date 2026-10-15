@@ -196,10 +196,17 @@ public class MainActivity extends AppCompatActivity {
 
         seekPos.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override public void onProgressChanged(SeekBar s, int p, boolean fromUser) {
-                if (fromUser && duration > 0) {
+                double base = TtsPlaybackService.syncBase();
+                if (base <= 0) base = duration;
+                if (fromUser && base > 0) {
                     // Keo: chi xem truoc gio dich, tha tay moi nhay that.
+                    // Thang theo moc dem nguoc (tong phim neu da nhap).
                     seeking = true;
-                    position = duration * p / 1000.0;
+                    position = base * p / 1000.0;
+                    if (position < 0) position = 0;
+                    if (duration > 0 && position > duration) {
+                        position = duration;
+                    }
                     tvTime.setText(fmtMmSs(position) + " / " + fmtMmSs(duration));
                     int idx = SubtitleParser.findIndex(subs, position);
                     if (idx >= 0 && idx < subs.size()) {
@@ -776,6 +783,21 @@ public class MainActivity extends AppCompatActivity {
                     sp.getBoolean(SubSearchManager.K_EN_OS, true));
             o.put(SubSearchManager.K_EN_SUBSOURCE,
                     sp.getBoolean(SubSearchManager.K_EN_SUBSOURCE, true));
+            // Ho so phim (xem tiep): fpos_*, ftotal_*, fname_*, curfilm_*.
+            try {
+                java.util.Map<String, ?> all = sp.getAll();
+                for (java.util.Map.Entry<String, ?> e : all.entrySet()) {
+                    String k = e.getKey();
+                    if (k == null || !(k.startsWith("fpos_")
+                            || k.startsWith("ftotal_")
+                            || k.startsWith("fname_")
+                            || k.startsWith("curfilm_"))) continue;
+                    Object v = e.getValue();
+                    if (v instanceof Number) o.put(k, ((Number) v).doubleValue());
+                    else if (v instanceof Boolean) o.put(k, (Boolean) v);
+                    else if (v != null) o.put(k, v.toString());
+                }
+            } catch (Exception ignored) {}
             java.io.OutputStream out =
                     getContentResolver().openOutputStream(uri);
             out.write(o.toString().getBytes("UTF-8"));
@@ -833,6 +855,26 @@ public class MainActivity extends AppCompatActivity {
                     o.optBoolean(SubSearchManager.K_EN_OS, true));
             ed.putBoolean(SubSearchManager.K_EN_SUBSOURCE,
                     o.optBoolean(SubSearchManager.K_EN_SUBSOURCE, true));
+            // Ho so phim (xem tiep).
+            try {
+                java.util.Iterator<String> keys = o.keys();
+                while (keys.hasNext()) {
+                    String k = keys.next();
+                    if (k == null || !(k.startsWith("fpos_")
+                            || k.startsWith("ftotal_")
+                            || k.startsWith("fname_")
+                            || k.startsWith("curfilm_"))) continue;
+                    Object v = o.opt(k);
+                    if (v instanceof Number) {
+                        ed.putFloat(k, (float) ((Number) v).doubleValue());
+                    } else if (v instanceof Boolean) {
+                        ed.putBoolean(k, (Boolean) v);
+                    } else if (v != null && !(v instanceof org.json.JSONObject)
+                            && !(v instanceof org.json.JSONArray)) {
+                        ed.putString(k, v.toString());
+                    }
+                }
+            } catch (Exception ignored) {}
             ed.apply();
             refreshAllUi();
             toast("Da khoi phuc xong.");
@@ -1164,8 +1206,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void syncUi() {
-        if (duration > 0 && !seeking) {
-            seekPos.setProgress((int) (position / duration * 1000));
+        double base = TtsPlaybackService.syncBase();
+        if (base <= 0) base = duration;
+        if (base > 0 && !seeking) {
+            seekPos.setProgress((int) (position / base * 1000));
         }
         tvTime.setText(TtsPlaybackService.timeText());
         tvRemain.setText(TtsPlaybackService.remainingText());

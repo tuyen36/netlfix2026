@@ -85,6 +85,7 @@ public class TtsPlaybackService extends Service
         playStartElapsed = android.os.SystemClock.elapsedRealtime();
         lastCueText = "...";
         sleepAtElapsed = 0;
+        sleepLeftMs = 0;
         pausedByFocus = false;
         if (speaker != null) speaker.resetIndex();
         if (edge != null) edge.stopPlayer();
@@ -143,6 +144,8 @@ public class TtsPlaybackService extends Service
     private String filmName = "";
     /** Hen gio tat doc: moc elapsedRealtime, 0 = tat. */
     private long sleepAtElapsed = 0;
+    /** Phan con lai (ms) khi dang pause — Play thi dem tiep. */
+    private long sleepLeftMs = 0;
     /** true = vua bi mat audio-focus (vd cuoc goi) nen tam dung. */
     private boolean pausedByFocus = false;
     private android.media.AudioManager audioMgr;
@@ -197,10 +200,11 @@ public class TtsPlaybackService extends Service
                     position = duration;
                     setPlaying(false);
                 }
-                // Hen gio tat doc.
+                // Hen gio tat doc (chi dem khi dang phat).
                 if (playing && sleepAtElapsed > 0
                         && android.os.SystemClock.elapsedRealtime() >= sleepAtElapsed) {
                     sleepAtElapsed = 0;
+                    sleepLeftMs = 0;
                     setPlaying(false);
                     try {
                         android.widget.Toast.makeText(this,
@@ -503,8 +507,20 @@ public class TtsPlaybackService extends Service
         if (p) {
             pausedByFocus = false;
             requestFocus();
+            // Tiep tuc dem hen gio con do khi pause.
+            if (sleepLeftMs > 0 && sleepAtElapsed <= 0) {
+                sleepAtElapsed = android.os.SystemClock.elapsedRealtime()
+                        + sleepLeftMs;
+                sleepLeftMs = 0;
+            }
         } else {
             abandonFocus();
+            // Pause: dong bang hen gio, Play thi dem tiep.
+            if (sleepAtElapsed > 0) {
+                sleepLeftMs = Math.max(0, sleepAtElapsed
+                        - android.os.SystemClock.elapsedRealtime());
+                sleepAtElapsed = 0;
+            }
             saveFilmNow();
         }
         if (speaker != null) speaker.setPlaying(p);
@@ -829,22 +845,34 @@ public class TtsPlaybackService extends Service
         }
     }
 
-    /** Hen gio tat doc (phut, 0 = tat). */
+    /** Hen gio tat doc (phut, 0 = tat). Pause thi dem tiep khi Play. */
     public static void setSleepMinutes(int m) {
         if (running != null) {
-            if (m <= 0) running.sleepAtElapsed = 0;
-            else running.sleepAtElapsed =
-                    android.os.SystemClock.elapsedRealtime() + m * 60L * 1000L;
+            if (m <= 0) {
+                running.sleepAtElapsed = 0;
+                running.sleepLeftMs = 0;
+            } else if (running.playing) {
+                running.sleepAtElapsed =
+                        android.os.SystemClock.elapsedRealtime() + m * 60L * 1000L;
+                running.sleepLeftMs = 0;
+            } else {
+                running.sleepLeftMs = m * 60L * 1000L;
+                running.sleepAtElapsed = 0;
+            }
             running.updateNotif();
         }
     }
 
     /** So giay con lai cua hen gio (0 = tat/het). */
     public static int getSleepLeftSec() {
-        if (running == null || running.sleepAtElapsed <= 0) return 0;
-        long left = (running.sleepAtElapsed
-                - android.os.SystemClock.elapsedRealtime()) / 1000;
-        return left < 0 ? 0 : (int) left;
+        if (running == null) return 0;
+        if (running.sleepAtElapsed > 0) {
+            long left = (running.sleepAtElapsed
+                    - android.os.SystemClock.elapsedRealtime()) / 1000;
+            return left < 0 ? 0 : (int) left;
+        }
+        if (running.sleepLeftMs > 0) return (int) (running.sleepLeftMs / 1000);
+        return 0;
     }
 
     /**
@@ -1057,8 +1085,13 @@ public class TtsPlaybackService extends Service
             @Override public void onProgressChanged(SeekBar s, int p, boolean f) {}
             @Override public void onStartTrackingTouch(SeekBar s) {}
             @Override public void onStopTrackingTouch(SeekBar s) {
-                if (duration > 0) {
-                    setPosition(duration * s.getProgress() / 1000.0);
+                double base = syncBase();
+                if (base <= 0) base = duration;
+                if (base > 0) {
+                    double pos = base * s.getProgress() / 1000.0;
+                    if (pos < 0) pos = 0;
+                    if (duration > 0 && pos > duration) pos = duration;
+                    setPosition(pos);
                 }
                 refreshFloatTime();
             }
@@ -1222,9 +1255,13 @@ public class TtsPlaybackService extends Service
             floatTime.setText(timeText());
             if (floatRemain != null) floatRemain.setText(remainingText());
             // Khong danh thanh keo khi user dang keo (isPressed).
-            if (floatSeek != null && !floatSeek.isPressed() && duration > 0) {
-                floatSeek.setProgress(
-                        (int) (getPosition() / duration * 1000));
+            // Thang theo moc dem nguoc (tong phim neu da nhap).
+            if (floatSeek != null && !floatSeek.isPressed()) {
+                double base = syncBase();
+                if (base > 0) {
+                    floatSeek.setProgress(
+                            (int) (getPosition() / base * 1000));
+                }
             }
         } catch (Exception ignored) {}
     }
